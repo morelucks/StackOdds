@@ -1,6 +1,6 @@
 [project]
 name = "stackodds"
-description = ""
+description = "Prototype LMSR-style prediction market on Stacks"
 authors = []
 telemetry = true
 cache_dir = "./.cache"
