@@ -1,6 +1,6 @@
 ;; Prediction market using LMSR pricing mechanism
 ;; Allows users to trade shares on binary outcomes with automatic price discovery
-;; This simplified version exposes only seven public/read-only entry points
+;; This version exposes twelve public/read-only entry points
 
 (define-constant ERR_UNAUTHORIZED (err u2001))
 (define-constant ERR_ZERO_LIQUIDITY (err u2002))
@@ -39,6 +39,27 @@
 (define-data-var contract-owner principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
 (define-data-var collateral-token principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
 (define-data-var outcome-token-contract principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
+
+;; Role checks and configuration
+(define-read-only (is-authorized (caller principal))
+    (ok (or (default-to false (get admin-role caller)) (default-to false (get moderator-role caller))))
+)
+
+(define-public (set-admin-role (who principal) (enabled bool))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+        (map-set admin-role who enabled)
+        (ok true)
+    )
+)
+
+(define-public (set-moderator-role (who principal) (enabled bool))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+        (map-set moderator-role who enabled)
+        (ok true)
+    )
+)
 
 ;; Setup function to configure owner, collateral token, and outcome token contract addresses
 (define-public (initialize (owner principal) (collateral principal) (outcome-token principal))
@@ -264,4 +285,14 @@
 ;; Retrieve complete market data structure
 (define-read-only (get-market (market-id uint))
     (ok (get markets market-id))
+)
+
+;; Number of markets that have been created so far
+(define-read-only (get-market-count)
+    (ok (default-to u0 (get market-count u0)))
+)
+
+;; Expose the contract owner address
+(define-read-only (get-owner)
+    (ok (var-get contract-owner))
 )
