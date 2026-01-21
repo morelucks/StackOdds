@@ -1,5 +1,6 @@
 ;; Prediction market using LMSR pricing mechanism
 ;; Allows users to trade shares on binary outcomes with automatic price discovery
+;; This simplified version exposes only seven public/read-only entry points
 
 (define-constant ERR_UNAUTHORIZED (err u2001))
 (define-constant ERR_ZERO_LIQUIDITY (err u2002))
