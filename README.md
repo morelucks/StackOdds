@@ -15,7 +15,7 @@ StackOdds implements a prediction market system on the Stacks blockchain using C
 
 ### `outcome-token.clar`
 
-A SIP-010 compliant fungible token contract that manages outcome tokens for each market. Each market has two outcome tokens:
+An outcome-token-style SIP-010 fungible token contract that manages outcome tokens for each market. Each market has two outcome tokens:
 - **YES token** (outcome = 1): Represents a bet that the market outcome will be YES
 - **NO token** (outcome = 0): Represents a bet that the market outcome will be NO
 
@@ -28,7 +28,7 @@ A SIP-010 compliant fungible token contract that manages outcome tokens for each
 
 ### `lmsr-market.clar`
 
-The main prediction market contract implementing the LMSR pricing mechanism.
+The main prediction market contract implementing the LMSR-style pricing mechanism (simplified in this prototype).
 
 **Key Functions:**
 - `initialize(owner, collateral, outcome-token)`: Initialize the market contract
