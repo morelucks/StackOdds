@@ -1,5 +1,5 @@
 ;; Outcome token contract for prediction market shares
-;; Markets create two token types: one for YES predictions and one for NO predictions
+;; Each market mints a YES token and a NO token to represent user positions
 
 (define-constant ERR_UNAUTHORIZED (err u1001))
 (define-constant ERR_INVALID_MARKET (err u1002))
