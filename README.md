@@ -4,7 +4,7 @@ A prediction market platform built on Stacks using the Logarithmic Market Scorin
 
 ## Overview
 
-StackOdds implements a prediction market system similar to the Solidity version, but adapted for the Stacks blockchain using Clarity smart contracts. The system allows users to:
+StackOdds implements a prediction market system on the Stacks blockchain using Clarity smart contracts. The system allows users to:
 
 - Create prediction markets on various topics
 - Buy YES or NO shares based on their predictions
