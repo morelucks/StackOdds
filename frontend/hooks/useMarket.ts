@@ -4,7 +4,7 @@ import { CONTRACT_ADDRESS } from "@/lib/constants"
 import { Market } from "@/lib/mock-data"
 import { useEffect, useState } from "react"
 import { fetchIPFSMetadata, getIPFSUrl } from "@/lib/ipfs"
-import { callReadOnlyFunction, cvToJSON } from '@stacks/transactions'
+import { fetchCallReadOnlyFunction, cvToJSON } from '@stacks/transactions'
 import { STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network'
 
 // Use testnet by default, can be configured via environment variable
@@ -24,7 +24,7 @@ export function useMarket(marketId: string) {
         const fetchMarket = async () => {
             setIsLoadingMarket(true)
             try {
-                const result = await callReadOnlyFunction({
+                const result = await fetchCallReadOnlyFunction({
                     network: NETWORK,
                     contractAddress,
                     contractName,
