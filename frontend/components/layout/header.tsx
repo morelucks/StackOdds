@@ -31,14 +31,17 @@ export default function Header() {
   }, []);
 
   // Debug logging
-  if (mounted) {
+  useEffect(() => {
     console.log('Header debug:', { 
+      mounted,
       isStacksConnected, 
       hasCreationRights, 
       isRightsLoading,
-      shouldShowButton: isStacksConnected && hasCreationRights 
+      shouldShowButton: mounted && isStacksConnected,
+      userData: !!userData,
+      stacksAddress
     });
-  }
+  }, [mounted, isStacksConnected, hasCreationRights, isRightsLoading, userData, stacksAddress]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
@@ -67,12 +70,12 @@ export default function Header() {
         <div className="ml-auto flex items-center gap-2 md:gap-4">
           <ThemeToggle className="h-8 w-8 md:h-9 md:w-9" />
 
-          {mounted && isStacksConnected && (
+          {mounted && (
             <Button 
               asChild 
               size="sm" 
               variant="outline" 
-              className="inline-flex border-border hover:bg-secondary hover:text-foreground"
+              className="hidden sm:inline-flex border-border hover:bg-secondary hover:text-foreground"
             >
               <Link href="/create-market">Create Market</Link>
             </Button>
@@ -155,7 +158,7 @@ export default function Header() {
                   <span className="font-medium">Home</span>
                 </Link>
 
-                {mounted && isStacksConnected && hasCreationRights && (
+                {mounted && (
                   <Link href="/create-market" className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-secondary/50 transition-colors text-foreground">
                     <PlusCircle className="h-5 w-5" />
                     <span className="font-medium">Create Market</span>
