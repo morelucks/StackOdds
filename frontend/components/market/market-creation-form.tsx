@@ -278,12 +278,11 @@ export function MarketCreationForm() {
             // Use makeContractCall for create-market function
             const createMarketArgs = [
                 BigInt(Math.floor(parseFloat(values.liquidity.toString()) * 1000000)), // liquidity in microSTX
-                    BigInt(startTime),
-                    BigInt(endTime),
-                    values.question,
-                    metadataCid
-                ],
-            })
+                BigInt(startTime),
+                BigInt(endTime),
+                values.question,
+                metadataCid
+            ];
 
             // TODO: Send transaction using @stacks/transactions and @stacks/connect
             // const createHash = await sendStacksTransaction(...)
