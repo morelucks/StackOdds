@@ -11,3 +11,12 @@ coverage
 *.info
 costs-reports.json
 node_modules
+
+# Environment variables - NEVER commit these!
+.env
+.env.local
+.env.*.local
+
+# Interaction scripts - may contain sensitive configuration
+scripts/interact/*.ts
+scripts/deploy/*.ts

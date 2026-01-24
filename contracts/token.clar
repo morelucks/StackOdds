@@ -17,7 +17,7 @@
         outcome: uint
     }
 )
-(define-map balances (tuple (token-id uint) (owner principal)) uint)
+(define-map balances (tuple (owner principal) (token-id uint)) uint)
 (define-map total-supply-map uint uint)
 
 (define-data-var contract-owner principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
@@ -26,24 +26,24 @@
 ;; Outcome 1 represents YES, outcome 0 represents NO
 (define-read-only (get-token-id (market-id uint) (outcome uint))
     (if (is-eq outcome u1)
-        (ok (default-to u0 (get token-id-yes-map market-id)))
-        (ok (default-to u0 (get token-id-no-map market-id)))
+        (ok (default-to u0 (map-get? token-id-yes-map market-id)))
+        (ok (default-to u0 (map-get? token-id-no-map market-id)))
     )
 )
 
 ;; Returns stored information about a specific token type
 (define-read-only (get-token-metadata (token-id uint))
-    (ok (get token-metadata token-id))
+    (ok (map-get? token-metadata token-id))
 )
 
 ;; Checks how many shares of a specific token a user owns
 (define-read-only (get-balance (token-id uint) (owner principal))
-    (ok (default-to u0 (get balances (tuple (token-id token-id) (owner owner)))))
+    (ok (default-to u0 (map-get? balances (tuple (owner owner) (token-id token-id)))))
 )
 
 ;; Returns the total number of shares minted for a token type
 (define-read-only (get-total-supply (token-id uint))
-    (ok (default-to u0 (get total-supply-map token-id)))
+    (ok (default-to u0 (map-get? total-supply-map token-id)))
 )
 
 ;; Moves shares between user accounts
@@ -51,9 +51,9 @@
 (define-public (transfer (token-id uint) (amount uint) (sender principal) (recipient principal))
     (begin
         (asserts! (is-eq tx-sender sender) ERR_UNAUTHORIZED)
-        (asserts! (>= (default-to u0 (get balances (tuple (token-id token-id) (owner sender)))) amount) ERR_INSUFFICIENT_BALANCE)
-        (map-set balances (tuple (token-id token-id) (owner sender)) (- (default-to u0 (get balances (tuple (token-id token-id) (owner sender)))) amount))
-        (map-set balances (tuple (token-id token-id) (owner recipient)) (+ (default-to u0 (get balances (tuple (token-id token-id) (owner recipient)))) amount))
+        (asserts! (>= (default-to u0 (map-get? balances (tuple (owner sender) (token-id token-id)))) amount) ERR_INSUFFICIENT_BALANCE)
+        (map-set balances (tuple (owner sender) (token-id token-id)) (- (default-to u0 (map-get? balances (tuple (owner sender) (token-id token-id)))) amount))
+        (map-set balances (tuple (owner recipient) (token-id token-id)) (+ (default-to u0 (map-get? balances (tuple (owner recipient) (token-id token-id)))) amount))
         (ok true)
     )
 )
@@ -63,8 +63,8 @@
 (define-public (mint (token-id uint) (recipient principal) (amount uint))
     (begin
         (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-        (map-set balances (tuple (token-id token-id) (owner recipient)) (+ (default-to u0 (get balances (tuple (token-id token-id) (owner recipient)))) amount))
-        (map-set total-supply-map token-id (+ (default-to u0 (get total-supply-map token-id)) amount))
+        (map-set balances (tuple (owner recipient) (token-id token-id)) (+ (default-to u0 (map-get? balances (tuple (owner recipient) (token-id token-id)))) amount))
+        (map-set total-supply-map token-id (+ (default-to u0 (map-get? total-supply-map token-id)) amount))
         (ok true)
     )
 )
@@ -74,9 +74,9 @@
 (define-public (burn (token-id uint) (owner principal) (amount uint))
     (begin
         (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-        (asserts! (>= (default-to u0 (get balances (tuple (token-id token-id) (owner owner)))) amount) ERR_INSUFFICIENT_BALANCE)
-        (map-set balances (tuple (token-id token-id) (owner owner)) (- (default-to u0 (get balances (tuple (token-id token-id) (owner owner)))) amount))
-        (map-set total-supply-map token-id (- (default-to u0 (get total-supply-map token-id)) amount))
+        (asserts! (>= (default-to u0 (map-get? balances (tuple (owner owner) (token-id token-id)))) amount) ERR_INSUFFICIENT_BALANCE)
+        (map-set balances (tuple (owner owner) (token-id token-id)) (- (default-to u0 (map-get? balances (tuple (owner owner) (token-id token-id)))) amount))
+        (map-set total-supply-map token-id (- (default-to u0 (map-get? total-supply-map token-id)) amount))
         (ok true)
     )
 )
