@@ -1,21 +1,51 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Clarinet } from '@stacks/clarinet-sdk';
+import { tx } from '@stacks/clarinet-sdk';
+import { uintCV, stringAsciiCV, principalCV } from '@stacks/transactions';
+
+// @ts-ignore - simnet is provided by vitest-environment-clarinet
+declare const simnet: any;
 
 describe('Contract Tests', () => {
-  let clarinet: Clarinet;
+  let deployer: any;
+  let contractAddress: string;
+  let tokenAddress: string;
 
   beforeEach(() => {
-    clarinet = new Clarinet();
+    deployer = simnet.deployer;
+    contractAddress = `${deployer.address}.contract`;
+    tokenAddress = `${deployer.address}.token`;
   });
 
-  it('should deploy contract successfully', async () => {
-    // TODO: Add contract deployment tests
-    expect(true).toBe(true);
-  });
+  describe('Initialization', () => {
+    it('should initialize contract with owner, collateral, and outcome token', async () => {
+      // Initialize token first
+      simnet.mineBlock([
+        tx.callPublicFn('token', 'initialize', [principalCV(contractAddress)], deployer.address)
+      ]);
 
-  it('should initialize contract correctly', async () => {
-    // TODO: Add initialization tests
-    expect(true).toBe(true);
+      // Initialize contract
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'initialize',
+          [
+            principalCV(simnet.deployer.address),
+            principalCV(simnet.deployer.address),
+            principalCV(tokenAddress)
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toBe('(ok true)');
+    });
+
+    it('should get initial market count of zero', async () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn('contract', 'get-market-count', [], deployer.address)
+      ]);
+
+      expect(result[0].result).toBe('(ok u0)');
+    });
   });
 });
-
