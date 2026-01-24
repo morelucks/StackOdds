@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useStacks } from "./useStacks";
 import { getStacksAddress } from "@/lib/wallet-utils";
-import { callReadOnlyFunction, cvToJSON } from '@stacks/transactions'
+import { fetchCallReadOnlyFunction, cvToJSON } from '@stacks/transactions'
 import { STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network'
 import { CONTRACT_ADDRESS } from "@/lib/constants";
 
@@ -37,7 +37,7 @@ export function useUserRights() {
                 const [contractAddress, contractName] = CONTRACT_ADDRESS.split('.');
 
                 // Get contract owner
-                const ownerResult = await callReadOnlyFunction({
+                const ownerResult = await fetchCallReadOnlyFunction({
                     network: NETWORK,
                     contractAddress,
                     contractName,
