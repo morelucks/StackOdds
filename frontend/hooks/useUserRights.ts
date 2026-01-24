@@ -47,10 +47,26 @@ export function useUserRights() {
                 });
 
                 const ownerJson = cvToJSON(ownerResult);
-                const owner = ownerJson.value?.value || ownerJson.value;
+                // For principal types, cvToJSON returns { type: 'principal', value: 'ST...' } or { type: 'principal', value: { address: 'ST...', contractName: '...' } }
+                let owner: string | null = null;
+                if (ownerJson.type === 'principal') {
+                    if (typeof ownerJson.value === 'string') {
+                        owner = ownerJson.value;
+                    } else if (ownerJson.value?.address) {
+                        owner = ownerJson.value.address;
+                    } else if (ownerJson.value?.value) {
+                        owner = ownerJson.value.value;
+                    }
+                } else {
+                    // Fallback for other types
+                    owner = ownerJson.value?.value || ownerJson.value || null;
+                }
+
+                // Debug logging (can be removed later)
+                console.log('Owner check:', { ownerJson, owner, address, userIsOwner: owner && address ? address.toLowerCase() === owner.toLowerCase() : false });
 
                 // Check if user is owner (owner has admin and moderator rights)
-                const userIsOwner = address === owner;
+                const userIsOwner = owner && address ? address.toLowerCase() === owner.toLowerCase() : false;
 
                 setIsAdmin(userIsOwner);
                 setIsModerator(userIsOwner);
