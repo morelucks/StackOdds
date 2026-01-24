@@ -46,12 +46,12 @@ export function TradingForm({ marketId, outcome, probability, isExpired = false 
 
             setTimeout(() => {
                 refetchAllowance()
-                toast.success("USDC Approved!")
+                toast.success("USDCx Approved!")
             }, 2000)
         }
     }, [approveHash, isApprovePending, refetchAllowance])
 
-    // Normalize amount to BigInt (microSTX - 6 decimals)
+    // Normalize amount to BigInt (USDCx uses 6 decimals)
     const amountBI = useMemo(() => {
         try {
             return amount ? BigInt(Math.floor(parseFloat(amount) * 1000000)) : BigInt(0)
@@ -87,7 +87,7 @@ export function TradingForm({ marketId, outcome, probability, isExpired = false 
             setIsApprovePending(false)
         } catch (error) {
             setIsApprovePending(false)
-            toast.error(`Failed to approve USDC: ${(error as any)?.message || "Unknown error"}`)
+            toast.error(`Failed to approve USDCx: ${(error as any)?.message || "Unknown error"}`)
         }
     }
 
@@ -140,7 +140,7 @@ export function TradingForm({ marketId, outcome, probability, isExpired = false 
             ? "Approving..."
             : isAllowanceSufficient
                 ? (isBuyPending ? "Buying..." : `Buy ${outcome}`)
-                : "Approve USDC"
+                : "Approve USDCx"
 
     const isGreen = outcome === "YES"
     const colorClass = isGreen ? "text-emerald-500" : "text-red-500"
@@ -171,7 +171,7 @@ export function TradingForm({ marketId, outcome, probability, isExpired = false 
                             min={0}
                         />
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                            USDC
+                            USDCx
                         </div>
                     </div>
 

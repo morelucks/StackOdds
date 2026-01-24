@@ -158,7 +158,7 @@ export function MarketCreationForm() {
             setIsApprovePending(false)
         } catch (error) {
             setIsApprovePending(false)
-            toast.error(`Failed to approve USDC: ${(error as any)?.message || "Unknown error"}`)
+            toast.error(`Failed to approve USDCx: ${(error as any)?.message || "Unknown error"}`)
         }
     }
 
@@ -497,7 +497,7 @@ export function MarketCreationForm() {
                         name="liquidity"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Initial Liquidity (USDC)</FormLabel>
+                                <FormLabel>Initial Liquidity (USDCx)</FormLabel>
                                 <FormControl>
                                     <Input type="number" {...field} className="bg-secondary border-border text-foreground" />
                                 </FormControl>
@@ -521,7 +521,7 @@ export function MarketCreationForm() {
                             className="w-full font-semibold h-12 bg-emerald-600 text-white hover:bg-emerald-700"
                             variant="default"
                         >
-                            {isApprovePending ? "Processing Approval..." : "Approve USDC"}
+                            {isApprovePending ? "Processing Approval..." : "Approve USDCx"}
                         </Button>
                     )}
                 </div>

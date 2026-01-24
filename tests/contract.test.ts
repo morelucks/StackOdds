@@ -17,21 +17,19 @@ describe('Contract Tests', () => {
   });
 
   describe('Initialization', () => {
-    it('should initialize contract with owner, collateral, and outcome token', async () => {
-      // Initialize token first
-      simnet.mineBlock([
-        tx.callPublicFn('token', 'initialize', [principalCV(contractAddress)], deployer.address)
-      ]);
-
-      // Initialize contract
+    it('should initialize contract with owner and collateral token', async () => {
+      // Initialize contract with contract principals (address.contract-name format)
+      // Note: Outcome token functionality is now merged into the main contract
+      // In simnet, we can use the deployer address as collateral for testing
+      const collateralTokenAddress = `${deployer.address}.token`; // Using token as collateral for testing
+      
       const result = simnet.mineBlock([
         tx.callPublicFn(
           'contract',
           'initialize',
           [
-            principalCV(simnet.deployer.address),
-            principalCV(simnet.deployer.address),
-            principalCV(tokenAddress)
+            principalCV(simnet.deployer.address), // owner (can be address principal)
+            principalCV(collateralTokenAddress)      // collateral token (MUST be contract principal)
           ],
           deployer.address
         )

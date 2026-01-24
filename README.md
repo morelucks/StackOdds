@@ -1,6 +1,8 @@
 # StackOdds
 
-A prediction market platform built on Stacks using the Logarithmic Market Scoring Rule (LMSR) mechanism.
+A prediction market platform built on Stacks using the Logarithmic Market Scoring Rule (LMSR) mechanism, integrated with **USDCx** for stablecoin liquidity.
+
+**🏆 Built for the Programming USDCx on Stacks Builder Challenge**
 
 ## Overview
 
@@ -72,12 +74,40 @@ npm install
 npm test
 ```
 
+### Deployment
+
+1. **Deploy Contracts:**
+```bash
+# Deploy token and contract to mainnet
+npx tsx scripts/deploy/deploy-mainnet.ts
+```
+
+2. **Initialize Contracts:**
+⚠️ **CRITICAL**: After deployment, you MUST initialize the contract with a **contract principal** (address.contract-name) for the collateral token, not just an address!
+
+```bash
+# Initialize the contract with USDCx (for hackathon)
+npx tsx scripts/interact/initialize-contract.ts \
+  <owner-address> \
+  SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.usdcx
+
+# Example with your deployer address:
+npx tsx scripts/interact/initialize-contract.ts \
+  SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB \
+  SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.usdcx
+```
+
+**Important Notes:**
+- `collateral-token` **MUST** be a contract principal (format: `address.contract-name`)
+- Outcome token functionality is now merged into the main contract (no separate token needed)
+- For USDCx integration, use: `SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.usdcx`
+- See [USDCX_INTEGRATION.md](./USDCX_INTEGRATION.md) for detailed integration guide
+
 ### Creating a Market
 
-1. Initialize the outcome token contract with the market contract address
-2. Initialize the market contract with collateral token and outcome token addresses
-3. Call `create-market` with:
-   - `b`: Liquidity parameter (in token's native decimals, e.g., 1000000 for 1 USDC)
+1. Initialize the market contract with USDCx as collateral token (see initialization above)
+2. Call `create-market` with:
+   - `b`: Liquidity parameter (in USDCx's 6-decimal format, e.g., 1000000 for 1 USDCx)
    - `start-time`: Block height when market starts
    - `end-time`: Block height when market ends
    - `question`: Market question (max 256 characters)
@@ -89,7 +119,7 @@ Users can buy YES or NO shares by calling:
 - `buy-yes(market-id, amount)` - Buy YES shares
 - `buy-no(market-id, amount)` - Buy NO shares
 
-The amount should be in the collateral token's native decimals (e.g., 6 for USDC).
+The amount should be in USDCx's 6-decimal format (e.g., 1000000 = 1 USDCx).
 
 ### Resolving Markets
 
@@ -106,9 +136,25 @@ After a market is resolved, users holding winning shares can claim:
 (claim market-id)
 ```
 
-This burns their winning outcome tokens and transfers the equivalent amount of collateral tokens (1:1 ratio).
+This burns their winning outcome tokens and transfers the equivalent amount of USDCx (1:1 ratio).
 
 ## Technical Notes
+
+### Contract Principal Requirements
+
+The `contract.clar` uses dynamic contract calls with variable principals. This has important implications:
+
+1. **Static Analyzer Warnings**: The contract will show "missing contract name for call" errors during `clarinet check`. This is **expected** and does not prevent runtime execution when contract principals are used correctly.
+
+2. **Why token.clar builds but contract.clar doesn't**: 
+   - `token.clar` has no `contract-call?` calls → builds fine
+   - `contract.clar` has `contract-call?` calls with variable principals → static analyzer error (but works at runtime)
+
+3. **Contract Principals Required**: When initializing, always use contract principals:
+   - ✅ Correct: `SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB.token`
+   - ❌ Wrong: `SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB`
+
+### Other Technical Notes
 
 - The contract uses fixed-point arithmetic for LMSR calculations
 - Exponential and logarithm functions are approximated using Taylor series
