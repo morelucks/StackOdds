@@ -262,5 +262,65 @@ describe('Contract Tests', () => {
 
       expect(result[0].result).toContain('(err u2002)');
     });
+
+    it('should fail to create market if end-time <= start-time', async () => {
+      const currentBlock = simnet.blockHeight;
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(1000000),
+            uintCV(currentBlock + 100),
+            uintCV(currentBlock + 10), // end before start
+            stringAsciiCV('Test question'),
+            stringAsciiCV('ipfs-hash')
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2008)');
+    });
+
+    it('should fail to create market if start-time < current block', async () => {
+      const currentBlock = simnet.blockHeight;
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(1000000),
+            uintCV(currentBlock - 1), // start in the past
+            uintCV(currentBlock + 100),
+            stringAsciiCV('Test question'),
+            stringAsciiCV('ipfs-hash')
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2008)');
+    });
+
+    it('should fail to create market if not owner', async () => {
+      const currentBlock = simnet.blockHeight;
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(1000000),
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 100),
+            stringAsciiCV('Test question'),
+            stringAsciiCV('ipfs-hash')
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2001)');
+    });
   });
 });
