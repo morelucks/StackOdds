@@ -206,4 +206,61 @@ describe('Contract Tests', () => {
       expect(result[0].result).toContain('(err u2001)');
     });
   });
+
+  describe('Market Creation', () => {
+    beforeEach(async () => {
+      const collateralTokenAddress = `${deployer.address}.token`;
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'initialize',
+          [
+            principalCV(simnet.deployer.address),
+            principalCV(collateralTokenAddress)
+          ],
+          deployer.address
+        )
+      ]);
+    });
+
+    it('should create a new market successfully', async () => {
+      const currentBlock = simnet.blockHeight;
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(1000000), // b = 1 USDCx (6 decimals)
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 100),
+            stringAsciiCV('Will Bitcoin reach $100k by 2026?'),
+            stringAsciiCV('ipfs-hash-123')
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(ok u');
+    });
+
+    it('should fail to create market with zero liquidity', async () => {
+      const currentBlock = simnet.blockHeight;
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(0),
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 100),
+            stringAsciiCV('Test question'),
+            stringAsciiCV('ipfs-hash')
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2002)');
+    });
+  });
 });
