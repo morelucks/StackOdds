@@ -145,5 +145,65 @@ describe('Contract Tests', () => {
 
       expect(result[0].result).toContain('(err u2001)');
     });
+
+    it('should set moderator role for a user', async () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'set-moderator-role',
+          [
+            principalCV(user1.address),
+            boolCV(true)
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toBe('(ok true)');
+    });
+
+    it('should revoke moderator role for a user', async () => {
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'set-moderator-role',
+          [
+            principalCV(user1.address),
+            boolCV(true)
+          ],
+          deployer.address
+        )
+      ]);
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'set-moderator-role',
+          [
+            principalCV(user1.address),
+            boolCV(false)
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toBe('(ok true)');
+    });
+
+    it('should fail to set moderator role if not owner', async () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'set-moderator-role',
+          [
+            principalCV(user1.address),
+            boolCV(true)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2001)');
+    });
   });
 });
