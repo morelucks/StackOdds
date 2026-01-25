@@ -668,5 +668,100 @@ describe('Contract Tests', () => {
 
       expect(result[0].result).toBe('(ok true)');
     });
+
+    it('should resolve market as NO won', async () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'resolve-market',
+          [
+            uintCV(marketId),
+            boolCV(false)
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toBe('(ok true)');
+    });
+
+    it('should fail to resolve if not owner', async () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'resolve-market',
+          [
+            uintCV(marketId),
+            boolCV(true)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2001)');
+    });
+
+    it('should fail to resolve if market not expired', async () => {
+      const currentBlock = simnet.blockHeight;
+      const createResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(1000000),
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 1000), // Far future
+            stringAsciiCV('Future market'),
+            stringAsciiCV('ipfs-hash')
+          ],
+          deployer.address
+        )
+      ]);
+
+      const resultStr = createResult[0].result as string;
+      const newMarketId = parseInt(resultStr.match(/u(\d+)/)?.[1] || '1');
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'resolve-market',
+          [
+            uintCV(newMarketId),
+            boolCV(true)
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2010)');
+    });
+
+    it('should fail to resolve already resolved market', async () => {
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'resolve-market',
+          [
+            uintCV(marketId),
+            boolCV(true)
+          ],
+          deployer.address
+        )
+      ]);
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'resolve-market',
+          [
+            uintCV(marketId),
+            boolCV(false)
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2003)');
+    });
   });
 });
