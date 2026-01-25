@@ -845,5 +845,50 @@ describe('Contract Tests', () => {
 
       expect(result[0].result).toContain('(ok u5000000)');
     });
+
+    it('should fail to claim if market not resolved', async () => {
+      const currentBlock = simnet.blockHeight;
+      const createResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(1000000),
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 1000),
+            stringAsciiCV('Unresolved market'),
+            stringAsciiCV('ipfs-hash')
+          ],
+          deployer.address
+        )
+      ]);
+
+      const resultStr = createResult[0].result as string;
+      const newMarketId = parseInt(resultStr.match(/u(\d+)/)?.[1] || '1');
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'claim',
+          [uintCV(newMarketId)],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2004)');
+    });
+
+    it('should fail to claim if user has no winning shares', async () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'claim',
+          [uintCV(marketId)],
+          user2.address // User2 has no shares
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2006)');
+    });
   });
 });
