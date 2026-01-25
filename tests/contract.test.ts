@@ -764,4 +764,86 @@ describe('Contract Tests', () => {
       expect(result[0].result).toContain('(err u2003)');
     });
   });
+
+  describe('Claim Winnings', () => {
+    let marketId: number;
+    let currentBlock: number;
+
+    beforeEach(async () => {
+      const collateralTokenAddress = `${deployer.address}.token`;
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'initialize',
+          [
+            principalCV(simnet.deployer.address),
+            principalCV(collateralTokenAddress)
+          ],
+          deployer.address
+        )
+      ]);
+
+      currentBlock = simnet.blockHeight;
+      const createResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(1000000),
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 100),
+            stringAsciiCV('Test market'),
+            stringAsciiCV('ipfs-hash')
+          ],
+          deployer.address
+        )
+      ]);
+
+      const resultStr = createResult[0].result as string;
+      marketId = parseInt(resultStr.match(/u(\d+)/)?.[1] || '1');
+
+      // User buys YES shares
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(5000000) // 5 USDCx
+          ],
+          user1.address
+        )
+      ]);
+
+      // Advance blocks and resolve as YES
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'resolve-market',
+          [
+            uintCV(marketId),
+            boolCV(true) // YES won
+          ],
+          deployer.address
+        )
+      ]);
+    });
+
+    it('should allow claiming winnings for resolved market', async () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'claim',
+          [uintCV(marketId)],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(ok u5000000)');
+    });
+  });
 });
