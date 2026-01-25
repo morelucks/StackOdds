@@ -891,4 +891,411 @@ describe('Contract Tests', () => {
       expect(result[0].result).toContain('(err u2006)');
     });
   });
+
+  describe('Token Transfer', () => {
+    let marketId: number;
+    let currentBlock: number;
+
+    beforeEach(async () => {
+      const collateralTokenAddress = `${deployer.address}.token`;
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'initialize',
+          [
+            principalCV(simnet.deployer.address),
+            principalCV(collateralTokenAddress)
+          ],
+          deployer.address
+        )
+      ]);
+
+      currentBlock = simnet.blockHeight;
+      const createResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(1000000),
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 1000),
+            stringAsciiCV('Transfer test market'),
+            stringAsciiCV('ipfs-hash')
+          ],
+          deployer.address
+        )
+      ]);
+
+      const resultStr = createResult[0].result as string;
+      marketId = parseInt(resultStr.match(/u(\d+)/)?.[1] || '1');
+
+      // User1 buys YES shares
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(3000000) // 3 USDCx
+          ],
+          user1.address
+        )
+      ]);
+    });
+
+    it('should transfer tokens between users', async () => {
+      const tokenIdResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-token-id',
+          [
+            uintCV(marketId),
+            uintCV(1) // YES
+          ],
+          deployer.address
+        )
+      ]);
+
+      const tokenIdStr = tokenIdResult[0].result as string;
+      const tokenId = parseInt(tokenIdStr.match(/u(\d+)/)?.[1] || '0');
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'transfer',
+          [
+            uintCV(tokenId),
+            uintCV(1000000), // Transfer 1 USDCx worth
+            principalCV(user1.address),
+            principalCV(user2.address)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toBe('(ok true)');
+    });
+
+    it('should fail to transfer if insufficient balance', async () => {
+      const tokenIdResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-token-id',
+          [
+            uintCV(marketId),
+            uintCV(1)
+          ],
+          deployer.address
+        )
+      ]);
+
+      const tokenIdStr = tokenIdResult[0].result as string;
+      const tokenId = parseInt(tokenIdStr.match(/u(\d+)/)?.[1] || '0');
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'transfer',
+          [
+            uintCV(tokenId),
+            uintCV(10000000), // More than user1 has
+            principalCV(user1.address),
+            principalCV(user2.address)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2011)');
+    });
+
+    it('should fail to transfer if not sender', async () => {
+      const tokenIdResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-token-id',
+          [
+            uintCV(marketId),
+            uintCV(1)
+          ],
+          deployer.address
+        )
+      ]);
+
+      const tokenIdStr = tokenIdResult[0].result as string;
+      const tokenId = parseInt(tokenIdStr.match(/u(\d+)/)?.[1] || '0');
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'transfer',
+          [
+            uintCV(tokenId),
+            uintCV(1000000),
+            principalCV(user1.address),
+            principalCV(user2.address)
+          ],
+          user2.address // user2 trying to transfer user1's tokens
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2001)');
+    });
+  });
+
+  describe('Read-Only Functions', () => {
+    let marketId: number;
+    let currentBlock: number;
+
+    beforeEach(async () => {
+      const collateralTokenAddress = `${deployer.address}.token`;
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'initialize',
+          [
+            principalCV(simnet.deployer.address),
+            principalCV(collateralTokenAddress)
+          ],
+          deployer.address
+        )
+      ]);
+
+      currentBlock = simnet.blockHeight;
+      const createResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(1000000),
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 1000),
+            stringAsciiCV('Read-only test market'),
+            stringAsciiCV('ipfs-hash-test')
+          ],
+          deployer.address
+        )
+      ]);
+
+      const resultStr = createResult[0].result as string;
+      marketId = parseInt(resultStr.match(/u(\d+)/)?.[1] || '1');
+    });
+
+    it('should get market data', async () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-market',
+          [uintCV(marketId)],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(ok');
+      expect(result[0].result).toContain('exists');
+    });
+
+    it('should get token ID for YES outcome', async () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-token-id',
+          [
+            uintCV(marketId),
+            uintCV(1) // YES
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(ok u');
+    });
+
+    it('should get token ID for NO outcome', async () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-token-id',
+          [
+            uintCV(marketId),
+            uintCV(0) // NO
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(ok u');
+    });
+
+    it('should get token metadata', async () => {
+      const tokenIdResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-token-id',
+          [
+            uintCV(marketId),
+            uintCV(1)
+          ],
+          deployer.address
+        )
+      ]);
+
+      const tokenIdStr = tokenIdResult[0].result as string;
+      const tokenId = parseInt(tokenIdStr.match(/u(\d+)/)?.[1] || '0');
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-token-metadata',
+          [uintCV(tokenId)],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(ok');
+      expect(result[0].result).toContain('name');
+    });
+
+    it('should get total supply of tokens', async () => {
+      const tokenIdResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-token-id',
+          [
+            uintCV(marketId),
+            uintCV(1)
+          ],
+          deployer.address
+        )
+      ]);
+
+      const tokenIdStr = tokenIdResult[0].result as string;
+      const tokenId = parseInt(tokenIdStr.match(/u(\d+)/)?.[1] || '0');
+
+      // Buy some shares first
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(2000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-total-supply',
+          [uintCV(tokenId)],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('u2000000');
+    });
+  });
+
+  describe('Integration Tests', () => {
+    let marketId: number;
+    let currentBlock: number;
+
+    beforeEach(async () => {
+      const collateralTokenAddress = `${deployer.address}.token`;
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'initialize',
+          [
+            principalCV(simnet.deployer.address),
+            principalCV(collateralTokenAddress)
+          ],
+          deployer.address
+        )
+      ]);
+
+      currentBlock = simnet.blockHeight;
+      const createResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(1000000),
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 200),
+            stringAsciiCV('Integration test market'),
+            stringAsciiCV('ipfs-integration')
+          ],
+          deployer.address
+        )
+      ]);
+
+      const resultStr = createResult[0].result as string;
+      marketId = parseInt(resultStr.match(/u(\d+)/)?.[1] || '1');
+    });
+
+    it('should handle full market lifecycle', async () => {
+      // Multiple users buy YES and NO
+      simnet.mineBlock([
+        tx.callPublicFn('contract', 'buy-yes', [uintCV(marketId), uintCV(1000000)], user1.address),
+        tx.callPublicFn('contract', 'buy-no', [uintCV(marketId), uintCV(2000000)], user2.address),
+        tx.callPublicFn('contract', 'buy-yes', [uintCV(marketId), uintCV(1500000)], user1.address)
+      ]);
+
+      // Advance blocks
+      for (let i = 0; i < 210; i++) {
+        simnet.mineBlock([]);
+      }
+
+      // Resolve market
+      simnet.mineBlock([
+        tx.callPublicFn('contract', 'resolve-market', [uintCV(marketId), boolCV(true)], deployer.address)
+      ]);
+
+      // User1 claims (has YES shares)
+      const claimResult = simnet.mineBlock([
+        tx.callPublicFn('contract', 'claim', [uintCV(marketId)], user1.address)
+      ]);
+
+      expect(claimResult[0].result).toContain('(ok u2500000)');
+    });
+
+    it('should handle multiple markets simultaneously', async () => {
+      const currentBlock = simnet.blockHeight;
+      
+      // Create second market
+      const createResult2 = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(2000000),
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 500),
+            stringAsciiCV('Second market'),
+            stringAsciiCV('ipfs-2')
+          ],
+          deployer.address
+        )
+      ]);
+
+      const resultStr2 = createResult2[0].result as string;
+      const marketId2 = parseInt(resultStr2.match(/u(\d+)/)?.[1] || '2');
+
+      // Trade on both markets
+      simnet.mineBlock([
+        tx.callPublicFn('contract', 'buy-yes', [uintCV(marketId), uintCV(1000000)], user1.address),
+        tx.callPublicFn('contract', 'buy-no', [uintCV(marketId2), uintCV(3000000)], user2.address)
+      ]);
+
+      // Verify market count
+      const countResult = simnet.mineBlock([
+        tx.callPublicFn('contract', 'get-market-count', [], deployer.address)
+      ]);
+
+      expect(countResult[0].result).toBe('(ok u2)');
+    });
+  });
 });
