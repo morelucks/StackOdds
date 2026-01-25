@@ -69,4 +69,81 @@ describe('Contract Tests', () => {
       expect(result[0].result).toContain('(ok');
     });
   });
+
+  describe('Role Management', () => {
+    beforeEach(async () => {
+      const collateralTokenAddress = `${deployer.address}.token`;
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'initialize',
+          [
+            principalCV(simnet.deployer.address),
+            principalCV(collateralTokenAddress)
+          ],
+          deployer.address
+        )
+      ]);
+    });
+
+    it('should set admin role for a user', async () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'set-admin-role',
+          [
+            principalCV(user1.address),
+            boolCV(true)
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toBe('(ok true)');
+    });
+
+    it('should revoke admin role for a user', async () => {
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'set-admin-role',
+          [
+            principalCV(user1.address),
+            boolCV(true)
+          ],
+          deployer.address
+        )
+      ]);
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'set-admin-role',
+          [
+            principalCV(user1.address),
+            boolCV(false)
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(result[0].result).toBe('(ok true)');
+    });
+
+    it('should fail to set admin role if not owner', async () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'set-admin-role',
+          [
+            principalCV(user1.address),
+            boolCV(true)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2001)');
+    });
+  });
 });
