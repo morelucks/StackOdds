@@ -533,5 +533,80 @@ describe('Contract Tests', () => {
 
       expect(result[0].result).toBe('(ok true)');
     });
+
+    it('should update user balance after buying NO', async () => {
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-no',
+          [
+            uintCV(marketId),
+            uintCV(2000000) // 2 USDCx
+          ],
+          user2.address
+        )
+      ]);
+
+      const tokenIdResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-token-id',
+          [
+            uintCV(marketId),
+            uintCV(0) // NO outcome
+          ],
+          deployer.address
+        )
+      ]);
+
+      const tokenIdStr = tokenIdResult[0].result as string;
+      const tokenId = parseInt(tokenIdStr.match(/u(\d+)/)?.[1] || '0');
+
+      const balanceResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-balance',
+          [
+            uintCV(tokenId),
+            principalCV(user2.address)
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(balanceResult[0].result).toContain('u2000000');
+    });
+
+    it('should fail to buy NO if market does not exist', async () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-no',
+          [
+            uintCV(99999),
+            uintCV(1000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2005)');
+    });
+
+    it('should fail to buy NO with zero amount', async () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-no',
+          [
+            uintCV(marketId),
+            uintCV(0)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2008)');
+    });
   });
 });
