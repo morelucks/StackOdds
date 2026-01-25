@@ -322,5 +322,85 @@ describe('Contract Tests', () => {
 
       expect(result[0].result).toContain('(err u2001)');
     });
+
+    it('should increment market count after creation', async () => {
+      const currentBlock = simnet.blockHeight;
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(1000000),
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 100),
+            stringAsciiCV('Test question'),
+            stringAsciiCV('ipfs-hash')
+          ],
+          deployer.address
+        )
+      ]);
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn('contract', 'get-market-count', [], deployer.address)
+      ]);
+
+      expect(result[0].result).toBe('(ok u1)');
+    });
+  });
+
+  describe('Buy YES Shares', () => {
+    let marketId: number;
+    let currentBlock: number;
+
+    beforeEach(async () => {
+      const collateralTokenAddress = `${deployer.address}.token`;
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'initialize',
+          [
+            principalCV(simnet.deployer.address),
+            principalCV(collateralTokenAddress)
+          ],
+          deployer.address
+        )
+      ]);
+
+      currentBlock = simnet.blockHeight;
+      const createResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(1000000),
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 1000),
+            stringAsciiCV('Will Ethereum reach $5000?'),
+            stringAsciiCV('ipfs-hash-eth')
+          ],
+          deployer.address
+        )
+      ]);
+
+      // Extract market ID from result
+      const resultStr = createResult[0].result as string;
+      marketId = parseInt(resultStr.match(/u(\d+)/)?.[1] || '1');
+    });
+
+    it('should allow buying YES shares', async () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(1000000) // 1 USDCx
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toBe('(ok true)');
+    });
   });
 });
