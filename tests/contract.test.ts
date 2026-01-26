@@ -1357,5 +1357,26 @@ describe('Contract Tests', () => {
 
       expect(result[0].result).toContain('(err u2009)');
     });
+
+    it('should fail to buy NO shares after market expiration', async () => {
+      // Advance blocks past the end time
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-no',
+          [
+            uintCV(marketId),
+            uintCV(1000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2009)');
+    });
   });
 });
