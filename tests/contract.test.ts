@@ -1378,5 +1378,26 @@ describe('Contract Tests', () => {
 
       expect(result[0].result).toContain('(err u2009)');
     });
+
+    it('should allow trading right before market expiration', async () => {
+      // Advance blocks to just before expiration
+      for (let i = 0; i < 99; i++) {
+        simnet.mineBlock([]);
+      }
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(500000)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toBe('(ok true)');
+    });
   });
 });
