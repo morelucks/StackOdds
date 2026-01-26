@@ -1647,5 +1647,41 @@ describe('Contract Tests', () => {
       expect(marketBefore[0].result).toContain('(ok');
       expect(marketAfter[0].result).toContain('(ok');
     });
+
+    it('should properly handle error cases for expired markets', async () => {
+      // Advance blocks past expiration
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      // Try to buy YES - should fail
+      const buyYesResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(1000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      // Try to buy NO - should fail
+      const buyNoResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-no',
+          [
+            uintCV(marketId),
+            uintCV(1000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(buyYesResult[0].result).toContain('(err u2009)');
+      expect(buyNoResult[0].result).toContain('(err u2009)');
+    });
   });
 });
