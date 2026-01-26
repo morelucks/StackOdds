@@ -1430,5 +1430,24 @@ describe('Contract Tests', () => {
       expect(result[0].result).toBe('(ok true)');
       expect(result[1].result).toBe('(ok true)');
     });
+
+    it('should verify market state after expiration but before resolution', async () => {
+      // Advance blocks past expiration
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      const marketResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-market',
+          [uintCV(marketId)],
+          deployer.address
+        )
+      ]);
+
+      expect(marketResult[0].result).toContain('(ok');
+      expect(marketResult[0].result).toContain('resolved');
+    });
   });
 });
