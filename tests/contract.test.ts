@@ -1494,5 +1494,58 @@ describe('Contract Tests', () => {
 
       expect(claimResult[0].result).toContain('(ok u3000000)');
     });
+
+    it('should allow token transfers even after market expiration', async () => {
+      // User buys shares before expiration
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(4000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      // Advance blocks past expiration
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      // Get token ID
+      const tokenIdResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-token-id',
+          [
+            uintCV(marketId),
+            uintCV(1)
+          ],
+          deployer.address
+        )
+      ]);
+
+      const tokenIdStr = tokenIdResult[0].result as string;
+      const tokenId = parseInt(tokenIdStr.match(/u(\d+)/)?.[1] || '0');
+
+      // Transfer tokens after expiration
+      const transferResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'transfer',
+          [
+            uintCV(tokenId),
+            uintCV(2000000),
+            principalCV(user1.address),
+            principalCV(user2.address)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(transferResult[0].result).toBe('(ok true)');
+    });
   });
 });
