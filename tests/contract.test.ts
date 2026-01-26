@@ -1298,4 +1298,43 @@ describe('Contract Tests', () => {
       expect(countResult[0].result).toBe('(ok u2)');
     });
   });
+
+  describe('Market Expiration and Trading Edge Cases', () => {
+    let marketId: number;
+    let currentBlock: number;
+
+    beforeEach(async () => {
+      const collateralTokenAddress = `${deployer.address}.token`;
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'initialize',
+          [
+            principalCV(simnet.deployer.address),
+            principalCV(collateralTokenAddress)
+          ],
+          deployer.address
+        )
+      ]);
+
+      currentBlock = simnet.blockHeight;
+      const createResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(1000000),
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 100),
+            stringAsciiCV('Expiration edge case market'),
+            stringAsciiCV('ipfs-expiration')
+          ],
+          deployer.address
+        )
+      ]);
+
+      const resultStr = createResult[0].result as string;
+      marketId = parseInt(resultStr.match(/u(\d+)/)?.[1] || '1');
+    });
+  });
 });
