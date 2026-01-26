@@ -1683,5 +1683,69 @@ describe('Contract Tests', () => {
       expect(buyYesResult[0].result).toContain('(err u2009)');
       expect(buyNoResult[0].result).toContain('(err u2009)');
     });
+
+    it('should validate token balances remain correct after expiration', async () => {
+      // User buys shares before expiration
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(5000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      // Get token ID and verify balance before expiration
+      const tokenIdResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-token-id',
+          [
+            uintCV(marketId),
+            uintCV(1)
+          ],
+          deployer.address
+        )
+      ]);
+
+      const tokenIdStr = tokenIdResult[0].result as string;
+      const tokenId = parseInt(tokenIdStr.match(/u(\d+)/)?.[1] || '0');
+
+      const balanceBefore = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-balance',
+          [
+            uintCV(tokenId),
+            principalCV(user1.address)
+          ],
+          deployer.address
+        )
+      ]);
+
+      // Advance blocks past expiration
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      // Verify balance remains the same after expiration
+      const balanceAfter = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-balance',
+          [
+            uintCV(tokenId),
+            principalCV(user1.address)
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(balanceBefore[0].result).toContain('u5000000');
+      expect(balanceAfter[0].result).toContain('u5000000');
+    });
   });
 });
