@@ -1547,5 +1547,53 @@ describe('Contract Tests', () => {
 
       expect(transferResult[0].result).toBe('(ok true)');
     });
+
+    it('should handle concurrent trading scenarios with multiple markets', async () => {
+      const currentBlock = simnet.blockHeight;
+      
+      // Create second market with different expiration
+      const createResult2 = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(2000000),
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 200),
+            stringAsciiCV('Concurrent market test'),
+            stringAsciiCV('ipfs-concurrent')
+          ],
+          deployer.address
+        )
+      ]);
+
+      const resultStr2 = createResult2[0].result as string;
+      const marketId2 = parseInt(resultStr2.match(/u(\d+)/)?.[1] || '2');
+
+      // Trade on both markets simultaneously
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(1000000)
+          ],
+          user1.address
+        ),
+        tx.callPublicFn(
+          'contract',
+          'buy-no',
+          [
+            uintCV(marketId2),
+            uintCV(1500000)
+          ],
+          user2.address
+        )
+      ]);
+
+      expect(result[0].result).toBe('(ok true)');
+      expect(result[1].result).toBe('(ok true)');
+    });
   });
 });
