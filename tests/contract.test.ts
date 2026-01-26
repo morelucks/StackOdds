@@ -1449,5 +1449,50 @@ describe('Contract Tests', () => {
       expect(marketResult[0].result).toContain('(ok');
       expect(marketResult[0].result).toContain('resolved');
     });
+
+    it('should handle claim workflow after market expiration and resolution', async () => {
+      // User buys shares before expiration
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(3000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      // Advance blocks past expiration
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      // Resolve market
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'resolve-market',
+          [
+            uintCV(marketId),
+            boolCV(true)
+          ],
+          deployer.address
+        )
+      ]);
+
+      // Claim winnings
+      const claimResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'claim',
+          [uintCV(marketId)],
+          user1.address
+        )
+      ]);
+
+      expect(claimResult[0].result).toContain('(ok u3000000)');
+    });
   });
 });
