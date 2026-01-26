@@ -1399,5 +1399,36 @@ describe('Contract Tests', () => {
 
       expect(result[0].result).toBe('(ok true)');
     });
+
+    it('should handle multiple trades from different users near expiration', async () => {
+      // Advance blocks to near expiration
+      for (let i = 0; i < 95; i++) {
+        simnet.mineBlock([]);
+      }
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(1000000)
+          ],
+          user1.address
+        ),
+        tx.callPublicFn(
+          'contract',
+          'buy-no',
+          [
+            uintCV(marketId),
+            uintCV(2000000)
+          ],
+          user2.address
+        )
+      ]);
+
+      expect(result[0].result).toBe('(ok true)');
+      expect(result[1].result).toBe('(ok true)');
+    });
   });
 });
