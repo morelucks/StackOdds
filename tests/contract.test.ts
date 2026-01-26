@@ -1336,5 +1336,26 @@ describe('Contract Tests', () => {
       const resultStr = createResult[0].result as string;
       marketId = parseInt(resultStr.match(/u(\d+)/)?.[1] || '1');
     });
+
+    it('should fail to buy YES shares after market expiration', async () => {
+      // Advance blocks past the end time
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(1000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2009)');
+    });
   });
 });
