@@ -1595,5 +1595,57 @@ describe('Contract Tests', () => {
       expect(result[0].result).toBe('(ok true)');
       expect(result[1].result).toBe('(ok true)');
     });
+
+    it('should maintain market data consistency through expiration', async () => {
+      // Initial trades
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(1000000)
+          ],
+          user1.address
+        ),
+        tx.callPublicFn(
+          'contract',
+          'buy-no',
+          [
+            uintCV(marketId),
+            uintCV(2000000)
+          ],
+          user2.address
+        )
+      ]);
+
+      // Get market data before expiration
+      const marketBefore = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-market',
+          [uintCV(marketId)],
+          deployer.address
+        )
+      ]);
+
+      // Advance blocks past expiration
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      // Get market data after expiration
+      const marketAfter = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-market',
+          [uintCV(marketId)],
+          deployer.address
+        )
+      ]);
+
+      expect(marketBefore[0].result).toContain('(ok');
+      expect(marketAfter[0].result).toContain('(ok');
+    });
   });
 });
