@@ -1,6 +1,7 @@
 ;; Prediction market using LMSR pricing mechanism
 ;; Allows users to trade shares on binary outcomes with automatic price discovery
-;; This version has outcome token functionality merged into the main contract
+;; This contract is developed for the Stacks blockchain and uses SIP-010 collateral.
+;; Implements the Logarithmic Market Scoring Rule (LMSR) for automated liquidity.
 ;; to eliminate contract-call? dependencies and static analyzer errors
 ;;
 ;; IMPORTANT: When initializing, you MUST pass a contract principal (address.contract-name)
