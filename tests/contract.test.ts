@@ -23,7 +23,7 @@ describe('Contract Tests', () => {
   describe('Initialization', () => {
     it('should initialize contract with owner and collateral token', async () => {
       const collateralTokenAddress = `${deployer.address}.token`;
-      
+
       const result = simnet.mineBlock([
         tx.callPublicFn(
           'contract',
@@ -49,7 +49,7 @@ describe('Contract Tests', () => {
 
     it('should get contract owner after initialization', async () => {
       const collateralTokenAddress = `${deployer.address}.token`;
-      
+
       simnet.mineBlock([
         tx.callPublicFn(
           'contract',
@@ -1264,7 +1264,7 @@ describe('Contract Tests', () => {
 
     it('should handle multiple markets simultaneously', async () => {
       const currentBlock = simnet.blockHeight;
-      
+
       // Create second market
       const createResult2 = simnet.mineBlock([
         tx.callPublicFn(
@@ -1550,7 +1550,7 @@ describe('Contract Tests', () => {
 
     it('should handle concurrent trading scenarios with multiple markets', async () => {
       const currentBlock = simnet.blockHeight;
-      
+
       // Create second market with different expiration
       const createResult2 = simnet.mineBlock([
         tx.callPublicFn(
@@ -1746,6 +1746,54 @@ describe('Contract Tests', () => {
 
       expect(balanceBefore[0].result).toContain('u5000000');
       expect(balanceAfter[0].result).toContain('u5000000');
+    });
+
+    it('should handle complex multi-user redemption scenarios', async () => {
+      // User 1 buys YES, User 2 buys NO
+      simnet.mineBlock([
+        tx.callPublicFn('contract', 'buy-yes', [uintCV(marketId), uintCV(2000000)], user1.address),
+        tx.callPublicFn('contract', 'buy-no', [uintCV(marketId), uintCV(3000000)], user2.address)
+      ]);
+
+      // Advance and resolve as NO won
+      for (let i = 0; i < 110; i++) simnet.mineBlock([]);
+      simnet.mineBlock([
+        tx.callPublicFn('contract', 'resolve-market', [uintCV(marketId), boolCV(false)], deployer.address)
+      ]);
+
+      // User 2 (winner) claims
+      const user2Claim = simnet.mineBlock([
+        tx.callPublicFn('contract', 'claim', [uintCV(marketId)], user2.address)
+      ]);
+      expect(user2Claim[0].result).toBe('(ok u3000000)');
+
+      // User 1 (loser) tries to claim - should fail
+      const user1Claim = simnet.mineBlock([
+        tx.callPublicFn('contract', 'claim', [uintCV(marketId)], user1.address)
+      ]);
+      expect(user1Claim[0].result).toContain('(err u1004)'); // ERR_INSUFFICIENT_SHARES in contract
+    });
+
+    it('should prevent claiming twice', async () => {
+      // Setup identical to above for winner
+      simnet.mineBlock([
+        tx.callPublicFn('contract', 'buy-yes', [uintCV(marketId), uintCV(1000000)], user1.address)
+      ]);
+      for (let i = 0; i < 110; i++) simnet.mineBlock([]);
+      simnet.mineBlock([
+        tx.callPublicFn('contract', 'resolve-market', [uintCV(marketId), boolCV(true)], deployer.address)
+      ]);
+
+      // First claim succeeds
+      simnet.mineBlock([
+        tx.callPublicFn('contract', 'claim', [uintCV(marketId)], user1.address)
+      ]);
+
+      // Second claim fails
+      const secondClaim = simnet.mineBlock([
+        tx.callPublicFn('contract', 'claim', [uintCV(marketId)], user1.address)
+      ]);
+      expect(secondClaim[0].result).toContain('(err u1004)');
     });
   });
 });
