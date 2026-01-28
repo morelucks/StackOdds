@@ -1,3 +1,7 @@
+/**
+ * Stacks transaction utilities for StackOdds.
+ * Provides functions for contract calls with Post-Conditions.
+ */
 import { openContractCall } from '@stacks/connect';
 import {
     uintCV,
