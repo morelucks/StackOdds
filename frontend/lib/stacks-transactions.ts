@@ -29,6 +29,10 @@ export interface CreateMarketParams {
     onCancel?: () => void;
 }
 
+/**
+ * Creates a new prediction market on the Stacks blockchain.
+ * @param params Creation parameters including liquidity and market details.
+ */
 export const createMarket = async (params: CreateMarketParams) => {
     const {
         contractAddress,
@@ -45,8 +49,6 @@ export const createMarket = async (params: CreateMarketParams) => {
         onCancel
     } = params;
 
-    // Post conditions to ensure the user sends the liquidity amount
-    // Using the modern Pc helper from @stacks/transactions 7.x
     const postConditions = [
         Pc.principal(userAddress)
             .willSendEq(BigInt(liquidity))
@@ -65,7 +67,7 @@ export const createMarket = async (params: CreateMarketParams) => {
             stringAsciiCV(question),
             stringAsciiCV(metadataCid)
         ],
-        postConditionMode: PostConditionMode.Deny, // Restricted for safety
+        postConditionMode: PostConditionMode.Deny,
         postConditions,
         onFinish: (data) => {
             console.log('Transaction broadcasted:', data.txId);
@@ -91,6 +93,10 @@ export interface BuyParams {
     onCancel?: () => void;
 }
 
+/**
+ * Purchases YES or NO outcome shares for a specific market.
+ * @param params Buy parameters including the amount of USDCx to spend.
+ */
 export const buyOutcome = async (params: BuyParams) => {
     const {
         contractAddress,
@@ -107,7 +113,6 @@ export const buyOutcome = async (params: BuyParams) => {
 
     const functionName = outcome === 'YES' ? 'buy-yes' : 'buy-no';
 
-    // Post condition: user sends USDCx to the contract
     const postConditions = [
         Pc.principal(userAddress)
             .willSendEq(BigInt(amount))
@@ -136,3 +141,89 @@ export const buyOutcome = async (params: BuyParams) => {
     });
 };
 
+export interface ResolveParams {
+    contractAddress: string;
+    contractName: string;
+    marketId: number;
+    yesWon: boolean;
+    onFinish?: (data: any) => void;
+    onCancel?: () => void;
+}
+
+/**
+ * Resolves a prediction market outcome.
+ * Only callable by authorized contract owners/moderators.
+ */
+export const resolveMarket = async (params: ResolveParams) => {
+    const {
+        contractAddress,
+        contractName,
+        marketId,
+        yesWon,
+        onFinish,
+        onCancel
+    } = params;
+
+    await openContractCall({
+        network: NETWORK,
+        contractAddress,
+        contractName,
+        functionName: 'resolve-market',
+        functionArgs: [
+            uintCV(marketId),
+            boolCV(yesWon)
+        ],
+        postConditionMode: PostConditionMode.Deny,
+        postConditions: [],
+        onFinish: (data) => {
+            console.log('Market resolution transaction broadcasted:', data.txId);
+            if (onFinish) onFinish(data);
+        },
+        onCancel: () => {
+            console.log('Resolution cancelled');
+            if (onCancel) onCancel();
+        }
+    });
+};
+
+export interface ClaimParams {
+    contractAddress: string;
+    contractName: string;
+    marketId: number;
+    onFinish?: (data: any) => void;
+    onCancel?: () => void;
+}
+
+/**
+ * Claims winnings for a resolved prediction market.
+ * Burns shares and transfers collateral back to the user.
+ */
+export const claimWinnings = async (params: ClaimParams) => {
+    const {
+        contractAddress,
+        contractName,
+        marketId,
+        onFinish,
+        onCancel
+    } = params;
+
+    await openContractCall({
+        network: NETWORK,
+        contractAddress,
+        contractName,
+        functionName: 'claim',
+        functionArgs: [
+            uintCV(marketId)
+        ],
+        postConditionMode: PostConditionMode.Deny,
+        postConditions: [],
+        onFinish: (data) => {
+            console.log('Claim transaction broadcasted:', data.txId);
+            if (onFinish) onFinish(data);
+        },
+        onCancel: () => {
+            console.log('Claim cancelled');
+            if (onCancel) onCancel();
+        }
+    });
+};
