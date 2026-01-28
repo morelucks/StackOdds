@@ -5,6 +5,7 @@
 import { openContractCall } from '@stacks/connect';
 import {
     uintCV,
+    boolCV,
     stringAsciiCV,
     PostConditionMode,
     Pc

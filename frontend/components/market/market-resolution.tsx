@@ -23,13 +23,24 @@ export function MarketResolution({ marketId }: MarketResolutionProps) {
         setResolvingOutcome(victoryOutcome ? "YES" : "NO")
         setIsPending(true)
         try {
-            // TODO: Implement Stacks contract call using @stacks/transactions
-            // Use makeContractCall for resolve-market function
-            toast.error("Stacks transactions not yet implemented.")
-            setIsPending(false)
-            return
-            // const txHash = await sendStacksTransaction(...)
-            // setHash(txHash)
+            const [contractAddress, contractName] = CONTRACT_ADDRESS.split('.')
+
+            await resolveMarket({
+                contractAddress,
+                contractName,
+                marketId: parseInt(marketId),
+                yesWon: victoryOutcome,
+                onFinish: (data: any) => {
+                    setHash(data.txId)
+                    setIsConfirmed(true)
+                    toast.success(`Market Resolution broadcasted! Outcome: ${victoryOutcome ? "YES" : "NO"} Won`)
+                    setIsPending(false)
+                },
+                onCancel: () => {
+                    toast.info("Resolution cancelled")
+                    setIsPending(false)
+                }
+            })
         } catch (error) {
             setIsPending(false)
             toast.error(`Failed to resolve market: ${(error as any)?.message || "Unknown error"}`)
