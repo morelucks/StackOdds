@@ -23,7 +23,7 @@ describe('Contract Tests', () => {
   describe('Initialization', () => {
     it('should initialize contract with owner and collateral token', async () => {
       const collateralTokenAddress = `${deployer.address}.token`;
-      
+
       const result = simnet.mineBlock([
         tx.callPublicFn(
           'contract',
@@ -49,7 +49,7 @@ describe('Contract Tests', () => {
 
     it('should get contract owner after initialization', async () => {
       const collateralTokenAddress = `${deployer.address}.token`;
-      
+
       simnet.mineBlock([
         tx.callPublicFn(
           'contract',
@@ -1264,7 +1264,7 @@ describe('Contract Tests', () => {
 
     it('should handle multiple markets simultaneously', async () => {
       const currentBlock = simnet.blockHeight;
-      
+
       // Create second market
       const createResult2 = simnet.mineBlock([
         tx.callPublicFn(
@@ -1296,6 +1296,504 @@ describe('Contract Tests', () => {
       ]);
 
       expect(countResult[0].result).toBe('(ok u2)');
+    });
+  });
+
+  describe('Market Expiration and Trading Edge Cases', () => {
+    let marketId: number;
+    let currentBlock: number;
+
+    beforeEach(async () => {
+      const collateralTokenAddress = `${deployer.address}.token`;
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'initialize',
+          [
+            principalCV(simnet.deployer.address),
+            principalCV(collateralTokenAddress)
+          ],
+          deployer.address
+        )
+      ]);
+
+      currentBlock = simnet.blockHeight;
+      const createResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(1000000),
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 100),
+            stringAsciiCV('Expiration edge case market'),
+            stringAsciiCV('ipfs-expiration')
+          ],
+          deployer.address
+        )
+      ]);
+
+      const resultStr = createResult[0].result as string;
+      marketId = parseInt(resultStr.match(/u(\d+)/)?.[1] || '1');
+    });
+
+    it('should fail to buy YES shares after market expiration', async () => {
+      // Advance blocks past the end time
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(1000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2009)');
+    });
+
+    it('should fail to buy NO shares after market expiration', async () => {
+      // Advance blocks past the end time
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-no',
+          [
+            uintCV(marketId),
+            uintCV(1000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toContain('(err u2009)');
+    });
+
+    it('should allow trading right before market expiration', async () => {
+      // Advance blocks to just before expiration
+      for (let i = 0; i < 99; i++) {
+        simnet.mineBlock([]);
+      }
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(500000)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(result[0].result).toBe('(ok true)');
+    });
+
+    it('should handle multiple trades from different users near expiration', async () => {
+      // Advance blocks to near expiration
+      for (let i = 0; i < 95; i++) {
+        simnet.mineBlock([]);
+      }
+
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(1000000)
+          ],
+          user1.address
+        ),
+        tx.callPublicFn(
+          'contract',
+          'buy-no',
+          [
+            uintCV(marketId),
+            uintCV(2000000)
+          ],
+          user2.address
+        )
+      ]);
+
+      expect(result[0].result).toBe('(ok true)');
+      expect(result[1].result).toBe('(ok true)');
+    });
+
+    it('should verify market state after expiration but before resolution', async () => {
+      // Advance blocks past expiration
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      const marketResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-market',
+          [uintCV(marketId)],
+          deployer.address
+        )
+      ]);
+
+      expect(marketResult[0].result).toContain('(ok');
+      expect(marketResult[0].result).toContain('resolved');
+    });
+
+    it('should handle claim workflow after market expiration and resolution', async () => {
+      // User buys shares before expiration
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(3000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      // Advance blocks past expiration
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      // Resolve market
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'resolve-market',
+          [
+            uintCV(marketId),
+            boolCV(true)
+          ],
+          deployer.address
+        )
+      ]);
+
+      // Claim winnings
+      const claimResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'claim',
+          [uintCV(marketId)],
+          user1.address
+        )
+      ]);
+
+      expect(claimResult[0].result).toContain('(ok u3000000)');
+    });
+
+    it('should allow token transfers even after market expiration', async () => {
+      // User buys shares before expiration
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(4000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      // Advance blocks past expiration
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      // Get token ID
+      const tokenIdResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-token-id',
+          [
+            uintCV(marketId),
+            uintCV(1)
+          ],
+          deployer.address
+        )
+      ]);
+
+      const tokenIdStr = tokenIdResult[0].result as string;
+      const tokenId = parseInt(tokenIdStr.match(/u(\d+)/)?.[1] || '0');
+
+      // Transfer tokens after expiration
+      const transferResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'transfer',
+          [
+            uintCV(tokenId),
+            uintCV(2000000),
+            principalCV(user1.address),
+            principalCV(user2.address)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(transferResult[0].result).toBe('(ok true)');
+    });
+
+    it('should handle concurrent trading scenarios with multiple markets', async () => {
+      const currentBlock = simnet.blockHeight;
+
+      // Create second market with different expiration
+      const createResult2 = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'create-market',
+          [
+            uintCV(2000000),
+            uintCV(currentBlock + 10),
+            uintCV(currentBlock + 200),
+            stringAsciiCV('Concurrent market test'),
+            stringAsciiCV('ipfs-concurrent')
+          ],
+          deployer.address
+        )
+      ]);
+
+      const resultStr2 = createResult2[0].result as string;
+      const marketId2 = parseInt(resultStr2.match(/u(\d+)/)?.[1] || '2');
+
+      // Trade on both markets simultaneously
+      const result = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(1000000)
+          ],
+          user1.address
+        ),
+        tx.callPublicFn(
+          'contract',
+          'buy-no',
+          [
+            uintCV(marketId2),
+            uintCV(1500000)
+          ],
+          user2.address
+        )
+      ]);
+
+      expect(result[0].result).toBe('(ok true)');
+      expect(result[1].result).toBe('(ok true)');
+    });
+
+    it('should maintain market data consistency through expiration', async () => {
+      // Initial trades
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(1000000)
+          ],
+          user1.address
+        ),
+        tx.callPublicFn(
+          'contract',
+          'buy-no',
+          [
+            uintCV(marketId),
+            uintCV(2000000)
+          ],
+          user2.address
+        )
+      ]);
+
+      // Get market data before expiration
+      const marketBefore = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-market',
+          [uintCV(marketId)],
+          deployer.address
+        )
+      ]);
+
+      // Advance blocks past expiration
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      // Get market data after expiration
+      const marketAfter = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-market',
+          [uintCV(marketId)],
+          deployer.address
+        )
+      ]);
+
+      expect(marketBefore[0].result).toContain('(ok');
+      expect(marketAfter[0].result).toContain('(ok');
+    });
+
+    it('should properly handle error cases for expired markets', async () => {
+      // Advance blocks past expiration
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      // Try to buy YES - should fail
+      const buyYesResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(1000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      // Try to buy NO - should fail
+      const buyNoResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-no',
+          [
+            uintCV(marketId),
+            uintCV(1000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      expect(buyYesResult[0].result).toContain('(err u2009)');
+      expect(buyNoResult[0].result).toContain('(err u2009)');
+    });
+
+    it('should validate token balances remain correct after expiration', async () => {
+      // User buys shares before expiration
+      simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'buy-yes',
+          [
+            uintCV(marketId),
+            uintCV(5000000)
+          ],
+          user1.address
+        )
+      ]);
+
+      // Get token ID and verify balance before expiration
+      const tokenIdResult = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-token-id',
+          [
+            uintCV(marketId),
+            uintCV(1)
+          ],
+          deployer.address
+        )
+      ]);
+
+      const tokenIdStr = tokenIdResult[0].result as string;
+      const tokenId = parseInt(tokenIdStr.match(/u(\d+)/)?.[1] || '0');
+
+      const balanceBefore = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-balance',
+          [
+            uintCV(tokenId),
+            principalCV(user1.address)
+          ],
+          deployer.address
+        )
+      ]);
+
+      // Advance blocks past expiration
+      for (let i = 0; i < 110; i++) {
+        simnet.mineBlock([]);
+      }
+
+      // Verify balance remains the same after expiration
+      const balanceAfter = simnet.mineBlock([
+        tx.callPublicFn(
+          'contract',
+          'get-balance',
+          [
+            uintCV(tokenId),
+            principalCV(user1.address)
+          ],
+          deployer.address
+        )
+      ]);
+
+      expect(balanceBefore[0].result).toContain('u5000000');
+      expect(balanceAfter[0].result).toContain('u5000000');
+    });
+
+    it('should handle complex multi-user redemption scenarios', async () => {
+      // User 1 buys YES, User 2 buys NO
+      simnet.mineBlock([
+        tx.callPublicFn('contract', 'buy-yes', [uintCV(marketId), uintCV(2000000)], user1.address),
+        tx.callPublicFn('contract', 'buy-no', [uintCV(marketId), uintCV(3000000)], user2.address)
+      ]);
+
+      // Advance and resolve as NO won
+      for (let i = 0; i < 110; i++) simnet.mineBlock([]);
+      simnet.mineBlock([
+        tx.callPublicFn('contract', 'resolve-market', [uintCV(marketId), boolCV(false)], deployer.address)
+      ]);
+
+      // User 2 (winner) claims
+      const user2Claim = simnet.mineBlock([
+        tx.callPublicFn('contract', 'claim', [uintCV(marketId)], user2.address)
+      ]);
+      expect(user2Claim[0].result).toBe('(ok u3000000)');
+
+      // User 1 (loser) tries to claim - should fail
+      const user1Claim = simnet.mineBlock([
+        tx.callPublicFn('contract', 'claim', [uintCV(marketId)], user1.address)
+      ]);
+      expect(user1Claim[0].result).toContain('(err u1004)'); // ERR_INSUFFICIENT_SHARES in contract
+    });
+
+    it('should prevent claiming twice', async () => {
+      // Setup identical to above for winner
+      simnet.mineBlock([
+        tx.callPublicFn('contract', 'buy-yes', [uintCV(marketId), uintCV(1000000)], user1.address)
+      ]);
+      for (let i = 0; i < 110; i++) simnet.mineBlock([]);
+      simnet.mineBlock([
+        tx.callPublicFn('contract', 'resolve-market', [uintCV(marketId), boolCV(true)], deployer.address)
+      ]);
+
+      // First claim succeeds
+      simnet.mineBlock([
+        tx.callPublicFn('contract', 'claim', [uintCV(marketId)], user1.address)
+      ]);
+
+      // Second claim fails
+      const secondClaim = simnet.mineBlock([
+        tx.callPublicFn('contract', 'claim', [uintCV(marketId)], user1.address)
+      ]);
+      expect(secondClaim[0].result).toContain('(err u1004)');
     });
   });
 });

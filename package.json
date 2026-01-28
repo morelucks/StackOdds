@@ -7,7 +7,12 @@
   "scripts": {
     "test": "vitest run",
     "test:report": "vitest run -- --coverage --costs",
-    "test:watch": "chokidar \"tests/**/*.ts\" \"contracts/**/*.clar\" -c \"npm run test:report\""
+    "test:watch": "chokidar \"tests/**/*.ts\" \"contracts/**/*.clar\" -c \"npm run test:report\"",
+    "deploy-mainnet": "tsx scripts/deploy/deploy-mainnet.ts",
+    "interact-token-50x": "tsx scripts/interact/interact-token-50x.ts",
+    "interact-token-12x": "tsx scripts/interact/interact-token-12x.ts",
+    "interact-token": "tsx scripts/interact/interact-token.ts",
+    "initialize-contract": "tsx scripts/interact/initialize-contract.ts"
   },
   "author": "",
   "license": "ISC",
