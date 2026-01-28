@@ -22,27 +22,10 @@ StackOdds is a next-generation prediction market platform built on the Stacks bl
 - **Stablecoin Support**: Trade with USDCx for stable value, reducing volatility concerns
 - **Global Access**: Permissionless markets accessible to anyone with an internet connection
 - **Fair Pricing**: LMSR algorithm ensures fair pricing and liquidity
-
-### For Investors
-- **Massive Market**: $10B+ global prediction market with 20%+ CAGR
-- **First-Mover Advantage**: Early entrant in the Stacks DeFi ecosystem with limited competition
-- **Scalable Architecture**: Production-ready, gas-optimized smart contracts
-- **Multi-Token Support**: Flexible collateral system supports USDCx, STX, and any SIP-010 token
-- **Multiple Revenue Streams**: Trading fees, market creation fees, premium features, API access
-- **Proven Technology**: LMSR algorithm used by major platforms (Augur, Polymarket)
-- **Low Operational Costs**: Decentralized infrastructure reduces overhead
-- **High Margins**: Software-based business model with 70%+ potential margins
-
+ 
 ## 🚀 Key Features
 
-- **LMSR Pricing**: Advanced market-making algorithm ensures continuous liquidity
-- **Multi-Collateral Support**: Works with any SIP-010 compliant token (USDCx, STX, etc.)
-- **Integrated Outcome Tokens**: Efficient token management built into the main contract
-- **Gas Optimized**: Reduced contract calls through smart architecture
-- **IPFS Integration**: Decentralized metadata storage for market information
-- **Role-Based Access**: Admin and moderator roles for market resolution
-- **Mobile-Ready Frontend**: Modern React/Next.js interface
-
+- **LMSR Pricing**: Advanced market-making algorithm ensures continuous liquidity 
 ## 📊 Market Opportunity
 
 ### Market Size

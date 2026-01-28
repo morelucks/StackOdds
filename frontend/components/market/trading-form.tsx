@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { CONTRACT_ADDRESS } from "@/lib/constants"
-// TODO: Implement Stacks contract interactions
+import { CONTRACT_ADDRESS, TOKEN_CONTRACT_ADDRESS } from "@/lib/constants"
+import { buyOutcome } from "@/lib/stacks-transactions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -38,7 +38,7 @@ export function TradingForm({ marketId, outcome, probability, isExpired = false 
     // TODO: Replace with Stacks contract read
     // For now, setting allowance to 0 - needs Stacks implementation
     const allowance = BigInt(0)
-    const refetchAllowance = () => {}
+    const refetchAllowance = () => { }
 
 
     useEffect(() => {
@@ -64,31 +64,7 @@ export function TradingForm({ marketId, outcome, probability, isExpired = false 
 
 
     async function handleApprove() {
-        if (!isStacksConnected) {
-            toast.info("Please connect your Bitcoin wallet first")
-            return
-        }
-
-        if (!walletAddress) {
-            toast.error("Wallet not available. Please reconnect your wallet.")
-            return
-        }
-
-        try {
-            setIsApprovePending(true)
-
-            // TODO: Implement Stacks token approval using @stacks/transactions
-            // Use makeContractCall for token approval
-            toast.error("Stacks token approval not yet implemented.")
-            return
-
-            setApproveHash(hash)
-            toast.success("Approval transaction sent!")
-            setIsApprovePending(false)
-        } catch (error) {
-            setIsApprovePending(false)
-            toast.error(`Failed to approve USDCx: ${(error as any)?.message || "Unknown error"}`)
-        }
+        toast.info("Standard SIP-010 transfer used; no separate approval step required with post-conditions.")
     }
 
     async function handleBuy() {
@@ -110,23 +86,30 @@ export function TradingForm({ marketId, outcome, probability, isExpired = false 
         try {
             setIsBuyPending(true)
 
-            const functionName = outcome === "YES" ? "buyYES" : "buyNO"
+            const [tokenAddress, tokenContractName] = TOKEN_CONTRACT_ADDRESS.split('.');
+            const [marketContractAddress, marketContractName] = CONTRACT_ADDRESS.split('.');
 
-            // TODO: Implement Stacks contract call using @stacks/transactions
-            // Use makeContractCall for buy-yes or buy-no function
-            toast.error("Stacks transactions not yet implemented. Please use Stacks wallet.")
-            return
-
-            setBuyHash(hash)
-            toast.success(`Buy ${outcome} transaction sent!`)
-            setAmount("")
-
-            // Invalidate the graph query to trigger a refetch
-            // Note: Data might not be available immediately from subgraph, 
-            // but this ensures we try to get the latest state
-            queryClient.invalidateQueries({ queryKey: ['sharesBoughts', marketId] })
-
-            setIsBuyPending(false)
+            await buyOutcome({
+                contractAddress: marketContractAddress,
+                contractName: marketContractName,
+                marketId: parseInt(marketId),
+                amount: Number(amountBI),
+                outcome,
+                tokenAddress,
+                tokenContractName,
+                userAddress: walletAddress,
+                onFinish: (data: any) => {
+                    setBuyHash(data.txId)
+                    toast.success(`Buy ${outcome} transaction broadcasted!`)
+                    setAmount("")
+                    queryClient.invalidateQueries({ queryKey: ['sharesBoughts', marketId] })
+                    setIsBuyPending(false)
+                },
+                onCancel: () => {
+                    toast.info("Transaction cancelled");
+                    setIsBuyPending(false);
+                }
+            });
         } catch (error) {
             setIsBuyPending(false)
             toast.error(`Failed to buy ${outcome}: ${(error as any)?.message || "Unknown error"}`)
@@ -136,11 +119,7 @@ export function TradingForm({ marketId, outcome, probability, isExpired = false 
     const isPending = isApprovePending || isBuyPending
     const buttonLabel = !isStacksConnected
         ? "Connect Bitcoin Wallet to Trade"
-        : isApprovePending
-            ? "Approving..."
-            : isAllowanceSufficient
-                ? (isBuyPending ? "Buying..." : `Buy ${outcome}`)
-                : "Approve USDCx"
+        : isBuyPending ? "Buying..." : `Buy ${outcome}`
 
     const isGreen = outcome === "YES"
     const colorClass = isGreen ? "text-emerald-500" : "text-red-500"

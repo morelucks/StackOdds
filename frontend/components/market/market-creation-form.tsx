@@ -23,10 +23,11 @@ import { uploadJSONToIPFS } from "@/lib/ipfs"
 import { useEffect, useState } from "react"
 import { DateTimePicker } from "@/components/ui/datetime-picker"
 import { uploadFileToCloudinary } from "@/lib/claudinary"
-// TODO: Update to use Stacks transactions
 import { useStacks } from "@/hooks/useStacks"
 import { getStacksAddress } from "@/lib/wallet-utils"
 import { useRouter } from "next/navigation"
+import { createMarket } from "@/lib/stacks-transactions"
+import { TOKEN_CONTRACT_ADDRESS } from "@/lib/constants"
 
 const formSchema = z.object({
     question: z.string().min(10, {
@@ -118,7 +119,7 @@ export function MarketCreationForm() {
     // TODO: Replace with Stacks contract read
     // For now, setting allowance to 0 - needs Stacks implementation
     const allowance = BigInt(0)
-    const refetchAllowance = () => {}
+    const refetchAllowance = () => { }
 
 
     useEffect(() => {
@@ -175,7 +176,7 @@ export function MarketCreationForm() {
             return
         }
 
-        if (!isAllowanceSufficient) {
+        if (!isAllowanceSufficient && false) { // Skip approval for now as Stacks doesn't standardly use it this way
             handleApprove();
             return;
         }
@@ -245,8 +246,7 @@ export function MarketCreationForm() {
 
             // 3. Create Market
             setCreateStep("Creating market...")
-            const createToast = toast.loading("Creating market on blockchain...");
-
+            const createToast = toast.loading("Confirm transaction in your wallet...");
 
             let startTime = Math.floor(values.startDate.getTime() / 1000)
             const endTime = Math.floor(values.endDate.getTime() / 1000)
@@ -257,45 +257,55 @@ export function MarketCreationForm() {
                 startTime = now + 60
             }
 
-            console.log("Creating market with args:", {
-                liquidity: BigInt(Math.floor(parseFloat(values.liquidity.toString()) * 1000000)), // Convert to microSTX (6 decimals)
+            const liquidityAmount = Math.floor(parseFloat(values.liquidity.toString()) * 1000000);
+
+            const [tokenAddress, tokenContractName] = TOKEN_CONTRACT_ADDRESS.split('.');
+            const [marketContractAddress, marketContractName] = CONTRACT_ADDRESS.split('.');
+
+            await createMarket({
+                contractAddress: marketContractAddress,
+                contractName: marketContractName,
+                liquidity: liquidityAmount,
                 startTime,
                 endTime,
                 question: values.question,
-                metadataCid
+                metadataCid,
+                tokenAddress,
+                tokenContractName,
+                userAddress: walletAddress,
+                onFinish: (data) => {
+                    setCreateHash(data.txId)
+                    toast.dismiss(createToast);
+                    toast.success("🎉 Market creation transaction broadcasted!")
+                    setIsCreatePending(false)
+                    setCreateStep("")
+
+                    form.reset({
+                        question: "",
+                        description: "",
+                        category: "",
+                        customCategory: "",
+                        resolutionSource: "",
+                        liquidity: 100,
+                        image: undefined,
+                        startDate: undefined,
+                        endDate: undefined,
+                    })
+                    setImagePreview(null)
+
+                    setTimeout(() => {
+                        router.push("/")
+                    }, 5000)
+                },
+                onCancel: () => {
+                    toast.dismiss(createToast);
+                    toast.info("Transaction cancelled");
+                    setIsCreatePending(false);
+                    setCreateStep("");
+                }
             });
 
-
-            if (!walletAddress) {
-                toast.dismiss(createToast);
-                toast.error("Wallet not available. Please reconnect your wallet.")
-                setIsCreatePending(false);
-                setCreateStep("");
-                return
-            }
-
-            // TODO: Implement Stacks contract call using @stacks/transactions
-            // Use makeContractCall for create-market function
-            const createMarketArgs = [
-                BigInt(Math.floor(parseFloat(values.liquidity.toString()) * 1000000)), // liquidity in microSTX
-                BigInt(startTime),
-                BigInt(endTime),
-                values.question,
-                metadataCid
-            ];
-
-            // TODO: Send transaction using @stacks/transactions and @stacks/connect
-            // const createHash = await sendStacksTransaction(...)
-            toast.error("Stacks transactions not yet implemented. Please use Stacks wallet.")
-            setIsCreatePending(false)
-            setCreateStep("")
-            return
-
-            setCreateHash(createHash)
-            toast.dismiss(createToast);
-            toast.success("🎉 Market created successfully! Transaction sent to blockchain.")
-            setIsCreatePending(false)
-            setCreateStep("")
+            return; // openContractCall handles the rest via callbacks
 
             form.reset({
                 question: "",

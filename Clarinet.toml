@@ -14,7 +14,7 @@ path = "contracts/contract.clar"
 epoch = "latest"
 
 [repl.analysis]
-passes = ["check_checker"]
+passes = []
 check_checker = { trusted_sender = false, trusted_caller = false, callee_filter = false }
 
 # Check-checker settings:

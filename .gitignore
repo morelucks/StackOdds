@@ -18,5 +18,7 @@ node_modules
 .env.*.local
 
 # Interaction scripts - may contain sensitive configuration
-scripts/interact/*.ts
-scripts/deploy/*.ts
+scripts/interact/
+scripts/deploy/
+!scripts/interact/README.md
+!scripts/deploy/README.md
