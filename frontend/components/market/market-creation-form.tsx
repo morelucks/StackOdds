@@ -511,7 +511,7 @@ export function MarketCreationForm() {
                                 <FormControl>
                                     <Input type="number" {...field} className="bg-secondary border-border text-foreground" />
                                 </FormControl>
-                                <FormDescription>Higher liquidity means less slippage for traders.</FormDescription>
+                                <FormDescription>Higher liquidity means less slippage for traders. This initial deposit determines the market depth according to the LMSR automated market maker.</FormDescription>
                                 <FormMessage />
                             </FormItem>
                         )}
