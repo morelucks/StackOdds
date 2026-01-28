@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Clarinet } from '@stacks/clarinet-sdk';
+import { Clarinet, tx } from '@stacks/clarinet-sdk';
+import { uintCV, principalCV, stringAsciiCV } from '@stacks/transactions';
+
+// @ts-ignore - simnet is provided by vitest-environment-clarinet
+declare const simnet: any;
 
 describe('Token Contract Tests', () => {
   let deployer: any;
@@ -126,8 +130,63 @@ describe('Token Contract Tests', () => {
       user1.address // Not owner
     );
     expect(result).toBe('(err u1001)');
+    it('should successfully burn tokens by owner', async () => {
+      simnet.callPublicFn('token', 'initialize', [principalCV(deployer.address)], deployer.address);
+      simnet.callPublicFn('token', 'initialize-token', [uintCV(1), uintCV(101), uintCV(102), stringAsciiCV('Y'), stringAsciiCV('N'), stringAsciiCV('Y'), stringAsciiCV('N')], deployer.address);
+      simnet.callPublicFn('token', 'mint', [uintCV(101), principalCV(user1.address), uintCV(1000000)], deployer.address);
+
+      const { result } = simnet.callPublicFn(
+        'token',
+        'burn',
+        [uintCV(101), principalCV(user1.address), uintCV(400000)],
+        deployer.address
+      );
+      expect(result).toBe('(ok true)');
+
+      const balanceResult = simnet.callReadOnlyFn('token', 'get-balance', [uintCV(101), principalCV(user1.address)], deployer.address);
+      expect(balanceResult.result).toBe('(ok u600000)');
+    });
+
+    it('should fail to initialize token with non-owner principal', async () => {
+      const { result } = simnet.callPublicFn(
+        'token',
+        'initialize',
+        [principalCV(user1.address)],
+        user1.address
+      );
+      // Deployment principal is the only one who can initialize
+      expect(result).toBe('(err u1001)');
+    });
+
+    it('should fail to initialize the same token twice', async () => {
+      simnet.callPublicFn('token', 'initialize', [principalCV(deployer.address)], deployer.address);
+      simnet.callPublicFn('token', 'initialize-token', [uintCV(1), uintCV(101), uintCV(102), stringAsciiCV('Y'), stringAsciiCV('N'), stringAsciiCV('Y'), stringAsciiCV('N')], deployer.address);
+
+      const { result } = simnet.callPublicFn(
+        'token',
+        'initialize-token',
+        [uintCV(1), uintCV(101), uintCV(102), stringAsciiCV('Y'), stringAsciiCV('N'), stringAsciiCV('Y'), stringAsciiCV('N')],
+        deployer.address
+      );
+      // Contract logic should prevent re-initialization of the same market
+      expect(result).toContain('(err');
+    });
+
+    it('should properly track metadata across multiple markets', async () => {
+      simnet.callPublicFn('token', 'initialize', [principalCV(deployer.address)], deployer.address);
+
+      // Market 1
+      simnet.callPublicFn('token', 'initialize-token', [uintCV(1), uintCV(101), uintCV(102), stringAsciiCV('M1 YES'), stringAsciiCV('M1 NO'), stringAsciiCV('M1Y'), stringAsciiCV('M1N')], deployer.address);
+      // Market 2
+      simnet.callPublicFn('token', 'initialize-token', [uintCV(2), uintCV(201), uintCV(202), stringAsciiCV('M2 YES'), stringAsciiCV('M2 NO'), stringAsciiCV('M2Y'), stringAsciiCV('M2N')], deployer.address);
+
+      const m1Name = simnet.callReadOnlyFn('token', 'get-name', [uintCV(101)], deployer.address);
+      const m2Name = simnet.callReadOnlyFn('token', 'get-name', [uintCV(201)], deployer.address);
+
+      expect(m1Name.result).toContain('M1 YES');
+      expect(m2Name.result).toContain('M2 YES');
+    });
   });
-});
 
 
 
