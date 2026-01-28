@@ -2,10 +2,10 @@
 ;; Compatible with Clarity 2.1 and SIP-010 standards.
 ;; This contract manages the minting, burning, and transfer of binary outcome tokens.
 
-(define-constant ERR_UNAUTHORIZED (err u1001))
-(define-constant ERR_INVALID_MARKET (err u1002))
-(define-constant ERR_INVALID_OUTCOME (err u1003))
-(define-constant ERR_INSUFFICIENT_BALANCE (err u1004))
+(define-constant ERR_UNAUTHORIZED (err u1001))        ;; Caller has no permission for this action
+(define-constant ERR_INVALID_MARKET (err u1002))      ;; Market ID does not exist
+(define-constant ERR_INVALID_OUTCOME (err u1003))     ;; Outcome ID is not YES (1) or NO (0)
+(define-constant ERR_INSUFFICIENT_BALANCE (err u1004)) ;; User lacks required token balance
 
 (define-map token-id-yes-map
   uint
