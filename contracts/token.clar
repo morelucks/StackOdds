@@ -36,8 +36,29 @@
   uint
   uint
 )
+(define-map authorized-admins principal bool)
+
 
 (define-data-var contract-owner principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
+
+(define-read-only (is-admin (user principal))
+  (default-to false (map-get? authorized-admins user))
+)
+
+(define-public (add-admin (new-admin principal))
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+    (ok (map-set authorized-admins new-admin true))
+  )
+)
+
+(define-public (remove-admin (admin principal))
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+    (ok (map-set authorized-admins admin false))
+  )
+)
+
 
 ;; Looks up the token identifier for a given market and outcome type
 ;; Outcome 1 represents YES, outcome 0 represents NO
@@ -134,7 +155,8 @@
     (amount uint)
   )
   (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+    (asserts! (or (is-eq tx-sender (var-get contract-owner)) (is-admin tx-sender)) ERR_UNAUTHORIZED)
+
     (map-set balances {
       owner: recipient,
       token-id: token-id,
@@ -163,7 +185,8 @@
     (amount uint)
   )
   (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+    (asserts! (or (is-eq tx-sender (var-get contract-owner)) (is-admin tx-sender)) ERR_UNAUTHORIZED)
+
     (asserts!
       (>=
         (default-to u0
