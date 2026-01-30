@@ -1,5 +1,5 @@
 import { STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
-import { callReadOnlyFunction, cvToJSON, principalCV } from '@stacks/transactions';
+import { fetchCallReadOnlyFunction, cvToJSON, principalCV } from '@stacks/transactions';
 
 const NETWORK = process.env.STACKS_NETWORK === 'mainnet' ? STACKS_MAINNET : STACKS_TESTNET;
 const CONTRACT_ADDRESS = 'SP2ZNGJ85ENDY6QRHQ5P2D4FXKGZWCKTB2T0Z55KS';
@@ -8,7 +8,7 @@ const CONTRACT_NAME = 'rewards-registry';
 async function checkRegistration(address: string) {
     console.log(`Checking registration for ${address}...`);
     try {
-        const result = await callReadOnlyFunction({
+        const result = await fetchCallReadOnlyFunction({
             network: NETWORK,
             contractAddress: CONTRACT_ADDRESS,
             contractName: CONTRACT_NAME,
