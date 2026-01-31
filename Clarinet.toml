@@ -9,8 +9,8 @@ cache_dir = "./.cache"
 path = "contracts/token.clar"
 epoch = 2.05
 
-[contracts.contract]
-path = "contracts/contract.clar"
+[contracts.market]
+path = "contracts/market.clar"
 epoch = 2.05
 
 [repl.analysis]
