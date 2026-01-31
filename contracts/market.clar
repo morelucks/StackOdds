@@ -2,7 +2,6 @@
 ;; Allows users to trade shares on binary outcomes with automatic price discovery
 ;; This contract is developed for the Stacks blockchain and uses SIP-010 collateral.
 ;; Implements the Logarithmic Market Scoring Rule (LMSR) for automated liquidity.
-;; to eliminate contract-call? dependencies and static analyzer errors
 ;;
 ;; IMPORTANT: When initializing, you MUST pass a contract principal (address.contract-name)
 ;; for the collateral token, not just an address principal.
@@ -18,17 +17,6 @@
 (define-constant ERR_MARKET_EXPIRED (err u2009))
 (define-constant ERR_MARKET_NOT_EXPIRED (err u2010))
 (define-constant ERR_INSUFFICIENT_BALANCE (err u2011))
-
-;; SIP-010 Fungible Token Trait
-;; Defines the standard interface for fungible tokens (USDCx, STX, etc.)
-;; This trait is used as a parameter type to enable flexible collateral token support.
-;; NOTE: The static analyzer may show "use of unresolved function 'as-contract'" errors
-;; when using trait parameters with contract-call?. This is a known static analyzer
-;; limitation - the code works correctly at runtime, but the analyzer cannot verify
-;; dynamic contract calls and some built-in functions when used with trait parameters.
-(define-trait sip010-trait
-  ((transfer (uint principal principal (optional (buff 34))) (response bool uint)))
-)
 
 ;; Stores all market data including quantities, timing, and resolution status
 (define-map markets
@@ -389,7 +377,7 @@
         )
         (begin
           ;; Collect the initial liquidity deposit from caller to this contract
-          (try! (contract-call? .token transfer u0 fund-amount caller
+          (try! (contract-call? 'SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB.token transfer u0 fund-amount caller
             (as-contract tx-sender)
           ))
 
@@ -443,10 +431,10 @@
       (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
       ;; Simple fixed-price trade: 1 collateral per share
       (asserts! (> amount u0) ERR_INVALID_PARAMS)
-      ;; Transfer collateral from user to contract
-      (try! (contract-call? .token transfer u0 amount tx-sender
-        (as-contract tx-sender)
-      ))
+        ;; Transfer collateral from user to contract
+        (try! (contract-call? 'SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB.token transfer u0 amount tx-sender
+          (as-contract tx-sender)
+        ))
 
 
       ;; Update volume tracking
@@ -486,9 +474,9 @@
       (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
       ;; Simple fixed-price trade: 1 collateral per share
       (asserts! (> amount u0) ERR_INVALID_PARAMS)
-      (try! (contract-call? .token transfer u0 amount tx-sender
-        (as-contract tx-sender)
-      ))
+        (try! (contract-call? 'SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB.token transfer u0 amount tx-sender
+          (as-contract tx-sender)
+        ))
 
       ;; Update volume tracking
       (map-set markets market-id {
@@ -580,7 +568,7 @@
           ;; Payout collateral from contract to user
           (let ((claimant tx-sender))
             (try! (as-contract
-              (contract-call? .token transfer u0 winning-shares
+              (contract-call? 'SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB.token transfer u0 winning-shares
                 tx-sender claimant
               )
             ))
