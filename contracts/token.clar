@@ -6,6 +6,8 @@
 (define-constant ERR_INVALID_MARKET (err u1002))      ;; Market ID does not exist
 (define-constant ERR_INVALID_OUTCOME (err u1003))     ;; Outcome ID is not YES (1) or NO (0)
 (define-constant ERR_INSUFFICIENT_BALANCE (err u1004)) ;; User lacks required token balance
+(define-constant ERR_ALREADY_INITIALIZED (err u1005)) ;; Market/Token already initialized
+
 
 (define-map token-id-yes-map
   uint
@@ -89,6 +91,24 @@
     })
   ))
 )
+
+;; SIP-010 related getters
+(define-read-only (get-name (token-id uint))
+  (ok (get name (default-to {name: "Unknown", symbol: "???", decimals: u6, market-id: u0, outcome: u0} (map-get? token-metadata token-id))))
+)
+
+(define-read-only (get-symbol (token-id uint))
+  (ok (get symbol (default-to {name: "Unknown", symbol: "???", decimals: u6, market-id: u0, outcome: u0} (map-get? token-metadata token-id))))
+)
+
+(define-read-only (get-decimals (token-id uint))
+  (ok (get decimals (default-to {name: "Unknown", symbol: "???", decimals: u6, market-id: u0, outcome: u0} (map-get? token-metadata token-id))))
+)
+
+(define-read-only (get-token-uri (token-id uint))
+  (ok none)
+)
+
 
 ;; Returns the total number of shares minted for a token type
 (define-read-only (get-total-supply (token-id uint))
@@ -232,6 +252,8 @@
   )
   (begin
     (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+    (asserts! (is-none (map-get? token-id-yes-map market-id)) ERR_ALREADY_INITIALIZED)
+
     (map-set token-id-yes-map market-id token-id-yes)
     (map-set token-id-no-map market-id token-id-no)
     (map-set token-metadata token-id-yes {
@@ -255,7 +277,25 @@
 ;; Sets the contract owner which will be the market contract address
 (define-public (initialize (owner principal))
   (begin
+    (asserts! (is-eq tx-sender 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM) ERR_UNAUTHORIZED)
     (var-set contract-owner owner)
     (ok true)
   )
+)
+
+
+(define-read-only (get-contract-owner)
+  (ok (var-get contract-owner))
+)
+
+(define-read-only (get-token-id-yes (market-id uint))
+  (ok (map-get? token-id-yes-map market-id))
+)
+
+(define-read-only (get-token-id-no (market-id uint))
+  (ok (map-get? token-id-no-map market-id))
+)
+
+(define-read-only (get-metadata (token-id uint))
+  (ok (map-get? token-metadata token-id))
 )
