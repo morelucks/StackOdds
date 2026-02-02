@@ -1,0 +1,31 @@
+{
+  "name": "stackodds-tests",
+  "version": "1.0.0",
+  "description": "Run unit tests on this project.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "vitest run",
+    "test:report": "vitest run -- --coverage --costs",
+    "test:watch": "chokidar \"tests/**/*.ts\" \"contracts/**/*.clar\" -c \"npm run test:report\"",
+    "deploy-mainnet": "tsx scripts/deploy/deploy-mainnet.ts",
+    "interact-token-100x": "tsx scripts/interact/interact-token-100x.ts",
+    "interact-token-50x": "tsx scripts/interact/interact-token-50x.ts",
+    "interact-token-12x": "tsx scripts/interact/interact-token-12x.ts",
+    "interact-token": "tsx scripts/interact/interact-token.ts",
+    "initialize-contract": "tsx scripts/interact/initialize-contract.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@stacks/clarinet-sdk": "^3.9.0",
+    "@stacks/transactions": "^7.2.0",
+    "@types/node": "^24.4.0",
+    "chokidar-cli": "^3.0.0",
+    "vitest": "^4.0.7",
+    "vitest-environment-clarinet": "^3.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0"
+  }
+}
