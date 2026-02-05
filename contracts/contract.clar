@@ -356,26 +356,9 @@
       ))
 
 
-      ;; Update volume tracking
-      (map-set markets market-id {
-        exists: true,
-        b: (get b market),
-        q-yes: (+ (get q-yes market) amount),
-        q-no: (get q-no market),
-        start-time: (get start-time market),
-        end-time: (get end-time market),
-        resolved: (get resolved market),
-        yes-won: (get yes-won market),
-        question: (get question market),
-        c-id: (get c-id market),
-        token-id-yes: (get token-id-yes market),
-        token-id-no: (get token-id-no market),
-      })
+      (map-set markets market-id (merge market { q-yes: (+ (get q-yes market) amount) }))
       ;; Mint YES outcome tokens internally (no contract-call needed)
-      (let ((token-id (get token-id-yes market)))
-        (mint-token token-id tx-sender amount)
-      )
-
+      (mint-token (get token-id-yes market) tx-sender amount)
       (ok true)
     )
   )
@@ -397,26 +380,9 @@
         (as-contract tx-sender)
       ))
 
-      ;; Update volume tracking
-      (map-set markets market-id {
-        exists: true,
-        b: (get b market),
-        q-yes: (get q-yes market),
-        q-no: (+ (get q-no market) amount),
-        start-time: (get start-time market),
-        end-time: (get end-time market),
-        resolved: (get resolved market),
-        yes-won: (get yes-won market),
-        question: (get question market),
-        c-id: (get c-id market),
-        token-id-yes: (get token-id-yes market),
-        token-id-no: (get token-id-no market),
-      })
+      (map-set markets market-id (merge market { q-no: (+ (get q-no market) amount) }))
       ;; Mint NO outcome tokens internally (no contract-call needed)
-      (let ((token-id (get token-id-no market)))
-        (mint-token token-id tx-sender amount)
-      )
-
+      (mint-token (get token-id-no market) tx-sender amount)
       (ok true)
     )
   )
@@ -437,20 +403,7 @@
       (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
       (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
       (asserts! (>= block-height (get end-time market)) ERR_MARKET_NOT_EXPIRED)
-      (map-set markets market-id {
-        exists: true,
-        b: (get b market),
-        q-yes: (get q-yes market),
-        q-no: (get q-no market),
-        start-time: (get start-time market),
-        end-time: (get end-time market),
-        resolved: true,
-        yes-won: yes-won,
-        question: (get question market),
-        c-id: (get c-id market),
-        token-id-yes: (get token-id-yes market),
-        token-id-no: (get token-id-no market),
-      })
+      (map-set markets market-id (merge market { resolved: true, yes-won: yes-won }))
       (ok true)
     )
   )
@@ -475,8 +428,7 @@
     (begin
       (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
       (asserts! (get resolved market) ERR_NOT_RESOLVED)
-      ;; Get balance internally (no contract-call needed)
-      (let ((winning-shares (match (get-balance token-id tx-sender) success success error u0)))
+      (let ((winning-shares (get-user-balance token-id tx-sender)))
 
 
 
