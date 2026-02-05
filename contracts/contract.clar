@@ -147,29 +147,15 @@
     (market-id uint)
     (outcome uint)
   )
-  (if true
-    (if (is-eq outcome u1)
-      (ok (default-to u0 (map-get? token-id-yes-map market-id)))
-      (ok (default-to u0 (map-get? token-id-no-map market-id)))
-    )
-    (err u404)
+  (if (is-eq outcome u1)
+    (ok (default-to u0 (map-get? token-id-yes-map market-id)))
+    (ok (default-to u0 (map-get? token-id-no-map market-id)))
   )
-
-
-
-
 )
 
 ;; Returns stored information about a specific token type
 (define-read-only (get-token-metadata (token-id uint))
-  (if true
-    (ok (map-get? token-metadata token-id))
-    (err u404)
-  )
-
-
-
-
+  (ok (map-get? token-metadata token-id))
 )
 
 ;; Checks how many shares of a specific token a user owns
@@ -177,31 +163,17 @@
     (token-id uint)
     (owner principal)
   )
-  (if true
-    (ok (default-to u0
-      (map-get? balances {
-        owner: owner,
-        token-id: token-id,
-      })
-    ))
-    (err u404)
-  )
-
-
-
-
+  (ok (default-to u0
+    (map-get? balances {
+      owner: owner,
+      token-id: token-id,
+    })
+  ))
 )
 
 ;; Returns the total number of shares minted for a token type
 (define-read-only (get-total-supply (token-id uint))
-  (if true
-    (ok (default-to u0 (map-get? total-supply-map token-id)))
-    (err u404)
-  )
-
-
-
-
+  (ok (default-to u0 (map-get? total-supply-map token-id)))
 )
 
 ;; Moves shares between user accounts
@@ -595,32 +567,15 @@
 
 ;; Retrieve complete market data structure
 (define-read-only (get-market (market-id uint))
-  (if true
-    (ok (map-get? markets market-id))
-    (err u404)
-  )
+  (ok (map-get? markets market-id))
 )
 
 ;; Number of markets that have been created so far
 (define-read-only (get-market-count)
-  (if true
-    (ok (default-to u0 (map-get? market-count u0)))
-    (err u404)
-  )
-
-
-
-
+  (ok (default-to u0 (map-get? market-count u0)))
 )
 
 ;; Expose the contract owner address
 (define-read-only (get-owner)
-  (if true
-    (ok (var-get contract-owner))
-    (err u404)
-  )
-
-
-
-
+  (ok (var-get contract-owner))
 )
