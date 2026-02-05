@@ -141,6 +141,14 @@
 ;; Outcome Token Functions (merged from token.clar)
 ;; ============================================================================
 
+(define-private (get-user-balance (token-id uint) (user principal))
+  (default-to u0 (map-get? balances { owner: user, token-id: token-id }))
+)
+
+(define-private (set-user-balance (token-id uint) (user principal) (amount uint))
+  (map-set balances { owner: user, token-id: token-id } amount)
+)
+
 ;; Looks up the token identifier for a given market and outcome type
 ;; Outcome 1 represents YES, outcome 0 represents NO
 (define-read-only (get-token-id
@@ -163,12 +171,7 @@
     (token-id uint)
     (owner principal)
   )
-  (ok (default-to u0
-    (map-get? balances {
-      owner: owner,
-      token-id: token-id,
-    })
-  ))
+  (ok (get-user-balance token-id owner))
 )
 
 ;; Returns the total number of shares minted for a token type
@@ -184,46 +187,14 @@
     (sender principal)
     (recipient principal)
   )
-  (begin
+  (let (
+    (sender-balance (get-user-balance token-id sender))
+    (recipient-balance (get-user-balance token-id recipient))
+  )
     (asserts! (is-eq tx-sender sender) ERR_UNAUTHORIZED)
-    (asserts!
-      (>=
-        (default-to u0
-          (map-get? balances {
-            owner: sender,
-            token-id: token-id,
-          })
-        )
-        amount
-      )
-      ERR_INSUFFICIENT_BALANCE
-    )
-    (map-set balances {
-      owner: sender,
-      token-id: token-id,
-    }
-      (-
-        (default-to u0
-          (map-get? balances {
-            owner: sender,
-            token-id: token-id,
-          })
-        )
-        amount
-      ))
-    (map-set balances {
-      owner: recipient,
-      token-id: token-id,
-    }
-      (+
-        (default-to u0
-          (map-get? balances {
-            owner: recipient,
-            token-id: token-id,
-          })
-        )
-        amount
-      ))
+    (asserts! (>= sender-balance amount) ERR_INSUFFICIENT_BALANCE)
+    (set-user-balance token-id sender (- sender-balance amount))
+    (set-user-balance token-id recipient (+ recipient-balance amount))
     (ok true)
   )
 )
@@ -235,25 +206,12 @@
     (recipient principal)
     (amount uint)
   )
-  (begin
-    (map-set balances {
-      owner: recipient,
-      token-id: token-id,
-    }
-      (+
-        (default-to u0
-          (map-get? balances {
-            owner: recipient,
-            token-id: token-id,
-          })
-        )
-        amount
-      ))
+  (let ((current-balance (get-user-balance token-id recipient)))
+    (set-user-balance token-id recipient (+ current-balance amount))
     (map-set total-supply-map token-id
       (+ (default-to u0 (map-get? total-supply-map token-id)) amount)
     )
     true
-
   )
 )
 
@@ -264,32 +222,9 @@
     (owner principal)
     (amount uint)
   )
-  (begin
-    (asserts!
-      (>=
-        (default-to u0
-          (map-get? balances {
-            owner: owner,
-            token-id: token-id,
-          })
-        )
-        amount
-      )
-      ERR_INSUFFICIENT_BALANCE
-    )
-    (map-set balances {
-      owner: owner,
-      token-id: token-id,
-    }
-      (-
-        (default-to u0
-          (map-get? balances {
-            owner: owner,
-            token-id: token-id,
-          })
-        )
-        amount
-      ))
+  (let ((current-balance (get-user-balance token-id owner)))
+    (asserts! (>= current-balance amount) ERR_INSUFFICIENT_BALANCE)
+    (set-user-balance token-id owner (- current-balance amount))
     (map-set total-supply-map token-id
       (- (default-to u0 (map-get? total-supply-map token-id)) amount)
     )
@@ -547,7 +482,6 @@
 
         (begin
           (asserts! (> winning-shares u0) ERR_INSUFFICIENT_SHARES)
-          ;; Remove shares from user's balance internally (no contract-call needed)
           (try! (burn-token token-id tx-sender winning-shares))
           ;; Payout collateral from contract to user
           (let ((claimant tx-sender))
@@ -557,7 +491,6 @@
               )
             ))
           )
-
           (ok winning-shares)
         )
       )
