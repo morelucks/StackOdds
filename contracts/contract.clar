@@ -1,9 +1,5 @@
-;; Prediction market using LMSR pricing mechanism
-;; Allows users to trade shares on binary outcomes with automatic price discovery
-;; This contract is developed for the Stacks blockchain and uses SIP-010 collateral.
 ;; Implements the Logarithmic Market Scoring Rule (LMSR) for automated liquidity.
-;; to eliminate contract-call? dependencies and static analyzer errors
-;;
+;; 
 ;; IMPORTANT: When initializing, you MUST pass a contract principal (address.contract-name)
 ;; for the collateral token, not just an address principal.
 
@@ -350,14 +346,8 @@
       (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
       ;; Simple fixed-price trade: 1 collateral per share
       (asserts! (> amount u0) ERR_INVALID_PARAMS)
-      ;; Transfer collateral from user to contract
-      (try! (contract-call? .token transfer u0 amount tx-sender
-        (as-contract tx-sender)
-      ))
-
-
+      (try! (contract-call? .token transfer u0 amount tx-sender (as-contract tx-sender)))
       (map-set markets market-id (merge market { q-yes: (+ (get q-yes market) amount) }))
-      ;; Mint YES outcome tokens internally (no contract-call needed)
       (mint-token (get token-id-yes market) tx-sender amount)
       (ok true)
     )
@@ -429,18 +419,12 @@
       (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
       (asserts! (get resolved market) ERR_NOT_RESOLVED)
       (let ((winning-shares (get-user-balance token-id tx-sender)))
-
-
-
         (begin
           (asserts! (> winning-shares u0) ERR_INSUFFICIENT_SHARES)
           (try! (burn-token token-id tx-sender winning-shares))
-          ;; Payout collateral from contract to user
           (let ((claimant tx-sender))
             (try! (as-contract
-              (contract-call? .token transfer u0 winning-shares
-                tx-sender claimant
-              )
+              (contract-call? .token transfer u0 winning-shares tx-sender claimant)
             ))
           )
           (ok winning-shares)
