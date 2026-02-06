@@ -1,9 +1,5 @@
-;; Prediction market using LMSR pricing mechanism
-;; Allows users to trade shares on binary outcomes with automatic price discovery
-;; This contract is developed for the Stacks blockchain and uses SIP-010 collateral.
 ;; Implements the Logarithmic Market Scoring Rule (LMSR) for automated liquidity.
-;; to eliminate contract-call? dependencies and static analyzer errors
-;;
+;; 
 ;; IMPORTANT: When initializing, you MUST pass a contract principal (address.contract-name)
 ;; for the collateral token, not just an address principal.
 
@@ -141,35 +137,29 @@
 ;; Outcome Token Functions (merged from token.clar)
 ;; ============================================================================
 
+(define-private (get-user-balance (token-id uint) (user principal))
+  (default-to u0 (map-get? balances { owner: user, token-id: token-id }))
+)
+
+(define-private (set-user-balance (token-id uint) (user principal) (amount uint))
+  (map-set balances { owner: user, token-id: token-id } amount)
+)
+
 ;; Looks up the token identifier for a given market and outcome type
 ;; Outcome 1 represents YES, outcome 0 represents NO
 (define-read-only (get-token-id
     (market-id uint)
     (outcome uint)
   )
-  (if true
-    (if (is-eq outcome u1)
-      (ok (default-to u0 (map-get? token-id-yes-map market-id)))
-      (ok (default-to u0 (map-get? token-id-no-map market-id)))
-    )
-    (err u404)
+  (if (is-eq outcome u1)
+    (ok (default-to u0 (map-get? token-id-yes-map market-id)))
+    (ok (default-to u0 (map-get? token-id-no-map market-id)))
   )
-
-
-
-
 )
 
 ;; Returns stored information about a specific token type
 (define-read-only (get-token-metadata (token-id uint))
-  (if true
-    (ok (map-get? token-metadata token-id))
-    (err u404)
-  )
-
-
-
-
+  (ok (map-get? token-metadata token-id))
 )
 
 ;; Checks how many shares of a specific token a user owns
@@ -177,31 +167,12 @@
     (token-id uint)
     (owner principal)
   )
-  (if true
-    (ok (default-to u0
-      (map-get? balances {
-        owner: owner,
-        token-id: token-id,
-      })
-    ))
-    (err u404)
-  )
-
-
-
-
+  (ok (get-user-balance token-id owner))
 )
 
 ;; Returns the total number of shares minted for a token type
 (define-read-only (get-total-supply (token-id uint))
-  (if true
-    (ok (default-to u0 (map-get? total-supply-map token-id)))
-    (err u404)
-  )
-
-
-
-
+  (ok (default-to u0 (map-get? total-supply-map token-id)))
 )
 
 ;; Moves shares between user accounts
@@ -212,46 +183,14 @@
     (sender principal)
     (recipient principal)
   )
-  (begin
+  (let (
+    (sender-balance (get-user-balance token-id sender))
+    (recipient-balance (get-user-balance token-id recipient))
+  )
     (asserts! (is-eq tx-sender sender) ERR_UNAUTHORIZED)
-    (asserts!
-      (>=
-        (default-to u0
-          (map-get? balances {
-            owner: sender,
-            token-id: token-id,
-          })
-        )
-        amount
-      )
-      ERR_INSUFFICIENT_BALANCE
-    )
-    (map-set balances {
-      owner: sender,
-      token-id: token-id,
-    }
-      (-
-        (default-to u0
-          (map-get? balances {
-            owner: sender,
-            token-id: token-id,
-          })
-        )
-        amount
-      ))
-    (map-set balances {
-      owner: recipient,
-      token-id: token-id,
-    }
-      (+
-        (default-to u0
-          (map-get? balances {
-            owner: recipient,
-            token-id: token-id,
-          })
-        )
-        amount
-      ))
+    (asserts! (>= sender-balance amount) ERR_INSUFFICIENT_BALANCE)
+    (set-user-balance token-id sender (- sender-balance amount))
+    (set-user-balance token-id recipient (+ recipient-balance amount))
     (ok true)
   )
 )
@@ -263,25 +202,12 @@
     (recipient principal)
     (amount uint)
   )
-  (begin
-    (map-set balances {
-      owner: recipient,
-      token-id: token-id,
-    }
-      (+
-        (default-to u0
-          (map-get? balances {
-            owner: recipient,
-            token-id: token-id,
-          })
-        )
-        amount
-      ))
+  (let ((current-balance (get-user-balance token-id recipient)))
+    (set-user-balance token-id recipient (+ current-balance amount))
     (map-set total-supply-map token-id
       (+ (default-to u0 (map-get? total-supply-map token-id)) amount)
     )
     true
-
   )
 )
 
@@ -292,32 +218,9 @@
     (owner principal)
     (amount uint)
   )
-  (begin
-    (asserts!
-      (>=
-        (default-to u0
-          (map-get? balances {
-            owner: owner,
-            token-id: token-id,
-          })
-        )
-        amount
-      )
-      ERR_INSUFFICIENT_BALANCE
-    )
-    (map-set balances {
-      owner: owner,
-      token-id: token-id,
-    }
-      (-
-        (default-to u0
-          (map-get? balances {
-            owner: owner,
-            token-id: token-id,
-          })
-        )
-        amount
-      ))
+  (let ((current-balance (get-user-balance token-id owner)))
+    (asserts! (>= current-balance amount) ERR_INSUFFICIENT_BALANCE)
+    (set-user-balance token-id owner (- current-balance amount))
     (map-set total-supply-map token-id
       (- (default-to u0 (map-get? total-supply-map token-id)) amount)
     )
@@ -443,32 +346,9 @@
       (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
       ;; Simple fixed-price trade: 1 collateral per share
       (asserts! (> amount u0) ERR_INVALID_PARAMS)
-      ;; Transfer collateral from user to contract
-      (try! (contract-call? .token transfer u0 amount tx-sender
-        (as-contract tx-sender)
-      ))
-
-
-      ;; Update volume tracking
-      (map-set markets market-id {
-        exists: true,
-        b: (get b market),
-        q-yes: (+ (get q-yes market) amount),
-        q-no: (get q-no market),
-        start-time: (get start-time market),
-        end-time: (get end-time market),
-        resolved: (get resolved market),
-        yes-won: (get yes-won market),
-        question: (get question market),
-        c-id: (get c-id market),
-        token-id-yes: (get token-id-yes market),
-        token-id-no: (get token-id-no market),
-      })
-      ;; Mint YES outcome tokens internally (no contract-call needed)
-      (let ((token-id (get token-id-yes market)))
-        (mint-token token-id tx-sender amount)
-      )
-
+      (try! (contract-call? .token transfer u0 amount tx-sender (as-contract tx-sender)))
+      (map-set markets market-id (merge market { q-yes: (+ (get q-yes market) amount) }))
+      (mint-token (get token-id-yes market) tx-sender amount)
       (ok true)
     )
   )
@@ -490,26 +370,9 @@
         (as-contract tx-sender)
       ))
 
-      ;; Update volume tracking
-      (map-set markets market-id {
-        exists: true,
-        b: (get b market),
-        q-yes: (get q-yes market),
-        q-no: (+ (get q-no market) amount),
-        start-time: (get start-time market),
-        end-time: (get end-time market),
-        resolved: (get resolved market),
-        yes-won: (get yes-won market),
-        question: (get question market),
-        c-id: (get c-id market),
-        token-id-yes: (get token-id-yes market),
-        token-id-no: (get token-id-no market),
-      })
+      (map-set markets market-id (merge market { q-no: (+ (get q-no market) amount) }))
       ;; Mint NO outcome tokens internally (no contract-call needed)
-      (let ((token-id (get token-id-no market)))
-        (mint-token token-id tx-sender amount)
-      )
-
+      (mint-token (get token-id-no market) tx-sender amount)
       (ok true)
     )
   )
@@ -530,20 +393,7 @@
       (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
       (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
       (asserts! (>= block-height (get end-time market)) ERR_MARKET_NOT_EXPIRED)
-      (map-set markets market-id {
-        exists: true,
-        b: (get b market),
-        q-yes: (get q-yes market),
-        q-no: (get q-no market),
-        start-time: (get start-time market),
-        end-time: (get end-time market),
-        resolved: true,
-        yes-won: yes-won,
-        question: (get question market),
-        c-id: (get c-id market),
-        token-id-yes: (get token-id-yes market),
-        token-id-no: (get token-id-no market),
-      })
+      (map-set markets market-id (merge market { resolved: true, yes-won: yes-won }))
       (ok true)
     )
   )
@@ -568,24 +418,15 @@
     (begin
       (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
       (asserts! (get resolved market) ERR_NOT_RESOLVED)
-      ;; Get balance internally (no contract-call needed)
-      (let ((winning-shares (match (get-balance token-id tx-sender) success success error u0)))
-
-
-
+      (let ((winning-shares (get-user-balance token-id tx-sender)))
         (begin
           (asserts! (> winning-shares u0) ERR_INSUFFICIENT_SHARES)
-          ;; Remove shares from user's balance internally (no contract-call needed)
           (try! (burn-token token-id tx-sender winning-shares))
-          ;; Payout collateral from contract to user
           (let ((claimant tx-sender))
             (try! (as-contract
-              (contract-call? .token transfer u0 winning-shares
-                tx-sender claimant
-              )
+              (contract-call? .token transfer u0 winning-shares tx-sender claimant)
             ))
           )
-
           (ok winning-shares)
         )
       )
@@ -595,32 +436,15 @@
 
 ;; Retrieve complete market data structure
 (define-read-only (get-market (market-id uint))
-  (if true
-    (ok (map-get? markets market-id))
-    (err u404)
-  )
+  (ok (map-get? markets market-id))
 )
 
 ;; Number of markets that have been created so far
 (define-read-only (get-market-count)
-  (if true
-    (ok (default-to u0 (map-get? market-count u0)))
-    (err u404)
-  )
-
-
-
-
+  (ok (default-to u0 (map-get? market-count u0)))
 )
 
 ;; Expose the contract owner address
 (define-read-only (get-owner)
-  (if true
-    (ok (var-get contract-owner))
-    (err u404)
-  )
-
-
-
-
+  (ok (var-get contract-owner))
 )
