@@ -683,6 +683,9 @@
       (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
       (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
       (asserts! (>= block-height (get end-time market)) ERR_MARKET_NOT_EXPIRED)
+      ;; Check minimum resolution delay
+      (asserts! (>= block-height (+ (get end-time market) (var-get min-resolution-delay))) 
+                ERR_RESOLUTION_TOO_EARLY)
       (map-set markets market-id (merge market { resolved: true, yes-won: yes-won }))
       (ok true)
     )
