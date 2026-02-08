@@ -146,6 +146,7 @@
   )
 )
 
+;; Public read-only function to check if a user meets compliance requirements
 (define-read-only (is-user-compliant (user principal) (country-code (string-ascii 2)))
   (check-user-compliance user country-code)
 )
