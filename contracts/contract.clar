@@ -550,6 +550,8 @@
       (asserts! (> b u0) ERR_ZERO_LIQUIDITY)
       (asserts! (> end-time start-time) ERR_INVALID_PARAMS)
       (asserts! (>= start-time block-height) ERR_INVALID_PARAMS)
+      ;; Check maximum market duration
+      (asserts! (<= (- end-time start-time) (var-get max-market-duration)) ERR_DURATION_EXCEEDED)
       (let (
           (current-count (default-to u0 (map-get? market-count u0)))
           (market-id (+ current-count u1))
