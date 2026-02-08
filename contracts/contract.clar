@@ -204,6 +204,17 @@
   )
 )
 
+(define-public (set-geo-restriction
+    (country-code (string-ascii 2))
+    (restricted bool)
+  )
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+    (map-set geo-restricted country-code restricted)
+    (ok true)
+  )
+)
+
 ;; Setup function to configure owner and collateral token address
 (define-public (initialize
     (owner principal)
