@@ -378,6 +378,31 @@
   )
 )
 
+;; Calculates current market price for an outcome (0 to 1, scaled by 1e6)
+;; Price = e^(q_outcome/b) / (e^(q_yes/b) + e^(q_no/b))
+(define-read-only (get-price
+    (market-id uint)
+    (outcome uint)
+  )
+  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
+    (let (
+        (b-int (to-int (get b market)))
+        (q-yes-int (to-int (get q-yes market)))
+        (q-no-int (to-int (get q-no market)))
+        (ratio-yes (if (> b-int 0) (/ (* q-yes-int 1000000) b-int) 0))
+        (ratio-no (if (> b-int 0) (/ (* q-no-int 1000000) b-int) 0))
+        (exp-yes (exp-approx ratio-yes))
+        (exp-no (exp-approx ratio-no))
+        (sum-exp (+ exp-yes exp-no))
+      )
+      (ok (if (is-eq outcome u1)
+        (/ (* exp-yes 1000000) sum-exp)
+        (/ (* exp-no 1000000) sum-exp)
+      ))
+    )
+  )
+)
+
 ;; ============================================================================
 ;; Market Functions
 ;; ============================================================================
