@@ -614,6 +614,9 @@
   )
   (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
     (begin
+      ;; Compliance checks
+      (try! (check-user-compliance tx-sender country-code))
+      
       (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
       (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
       (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
