@@ -346,6 +346,38 @@
   )
 )
 
+;; Calculates the payout from selling shares
+;; Returns the collateral amount received
+(define-read-only (get-sell-payout
+    (market-id uint)
+    (outcome uint)
+    (shares uint)
+  )
+  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
+    (let (
+        (b (get b market))
+        (current-yes (get q-yes market))
+        (current-no (get q-no market))
+      )
+      (asserts! (if (is-eq outcome u1) 
+        (>= current-yes shares)
+        (>= current-no shares)
+      ) ERR_INSUFFICIENT_SHARES)
+      (let (
+          (new-yes (if (is-eq outcome u1) (- current-yes shares) current-yes))
+          (new-no (if (is-eq outcome u0) (- current-no shares) current-no))
+          (cost-before (calculate-cost b current-yes current-no))
+          (cost-after (calculate-cost b new-yes new-no))
+        )
+        (ok (if (>= cost-before cost-after)
+          (- cost-before cost-after)
+          u0
+        ))
+      )
+    )
+  )
+)
+
 ;; ============================================================================
 ;; Market Functions
 ;; ============================================================================
