@@ -129,6 +129,10 @@
   (begin
     ;; Check blacklist
     (asserts! (not (default-to false (map-get? blacklist user))) ERR_BLACKLISTED)
+    ;; Check whitelist if enabled
+    (asserts! (or (not (var-get whitelist-enabled)) 
+                  (default-to false (map-get? whitelist user))) 
+              ERR_NOT_WHITELISTED)
     (ok true)
   )
 )
