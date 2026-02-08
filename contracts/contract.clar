@@ -193,6 +193,17 @@
   )
 )
 
+(define-public (set-kyc-verified
+    (user principal)
+    (verified bool)
+  )
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+    (map-set kyc-verified user verified)
+    (ok true)
+  )
+)
+
 ;; Setup function to configure owner and collateral token address
 (define-public (initialize
     (owner principal)
