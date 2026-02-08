@@ -298,8 +298,26 @@
       ;; Calculate q/b ratios (scaled by 1e6)
       (ratio-yes (if (> b u0) (/ (* q-yes-int 1000000) b-int) 0))
       (ratio-no (if (> b u0) (/ (* q-no-int 1000000) b-int) 0))
+      ;; Calculate e^(q/b)
+      (exp-yes (exp-approx ratio-yes))
+      (exp-no (exp-approx ratio-no))
+      ;; Sum of exponentials
+      (sum-exp (+ exp-yes exp-no))
     )
-    u0
+    ;; Approximate ln(sum) using log properties
+    ;; For simplicity: ln(sum) ≈ max(ratio-yes, ratio-no) + ln(1 + e^(-|diff|))
+    (let (
+        (max-ratio (if (> ratio-yes ratio-no) ratio-yes ratio-no))
+        (diff (if (> ratio-yes ratio-no) (- ratio-yes ratio-no) (- ratio-no ratio-yes)))
+        ;; ln(1 + e^(-diff)) ≈ e^(-diff) for large diff, otherwise use approximation
+        (ln-correction (if (> diff 5000000) 
+          (/ 1000000 (exp-approx diff))
+          (/ (exp-approx (- 0 diff)) 2)
+        ))
+      )
+      ;; C = b * (max-ratio + ln-correction)
+      (to-uint (/ (* b-int (+ max-ratio ln-correction)) 1000000))
+    )
   )
 )
 
