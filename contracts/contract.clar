@@ -14,6 +14,7 @@
 (define-constant ERR_MARKET_EXPIRED (err u2009))
 (define-constant ERR_MARKET_NOT_EXPIRED (err u2010))
 (define-constant ERR_INSUFFICIENT_BALANCE (err u2011))
+(define-constant ERR_BLACKLISTED (err u2012))
 
 ;; SIP-010 Fungible Token Trait
 ;; Defines the standard interface for fungible tokens (USDCx, STX, etc.)
