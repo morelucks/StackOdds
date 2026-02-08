@@ -321,6 +321,31 @@
   )
 )
 
+;; Calculates the cost to buy a specific amount of shares
+;; Returns the collateral amount needed
+(define-read-only (get-buy-cost 
+    (market-id uint)
+    (outcome uint)
+    (shares uint)
+  )
+  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
+    (let (
+        (b (get b market))
+        (current-yes (get q-yes market))
+        (current-no (get q-no market))
+        (new-yes (if (is-eq outcome u1) (+ current-yes shares) current-yes))
+        (new-no (if (is-eq outcome u0) (+ current-no shares) current-no))
+        (cost-before (calculate-cost b current-yes current-no))
+        (cost-after (calculate-cost b new-yes new-no))
+      )
+      (ok (if (>= cost-after cost-before) 
+        (- cost-after cost-before)
+        u0
+      ))
+    )
+  )
+)
+
 ;; ============================================================================
 ;; Market Functions
 ;; ============================================================================
