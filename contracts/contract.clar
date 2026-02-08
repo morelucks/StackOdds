@@ -103,6 +103,10 @@
   principal
   bool
 )
+(define-map kyc-verified
+  principal
+  bool
+)
 
 (define-data-var contract-owner principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
 (define-data-var collateral-token principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
