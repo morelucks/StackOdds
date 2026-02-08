@@ -586,6 +586,77 @@
   )
 )
 
+;; Sell shares back to the market at current LMSR price
+(define-public (sell-yes
+    (market-id uint)
+    (shares uint)
+  )
+  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
+    (begin
+      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
+      (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
+      (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
+      (asserts! (> shares u0) ERR_INVALID_PARAMS)
+      
+      ;; Check user has enough shares
+      (let ((user-balance (get-user-balance (get token-id-yes market) tx-sender)))
+        (asserts! (>= user-balance shares) ERR_INSUFFICIENT_SHARES)
+        
+        ;; Calculate payout using LMSR
+        (let ((payout (unwrap! (get-sell-payout market-id u1 shares) ERR_INVALID_PARAMS)))
+          (asserts! (> payout u0) ERR_INVALID_PARAMS)
+          ;; Burn outcome tokens
+          (try! (burn-token (get token-id-yes market) tx-sender shares))
+          ;; Update market state
+          (map-set markets market-id (merge market { q-yes: (- (get q-yes market) shares) }))
+          ;; Transfer collateral to seller
+          (let ((seller tx-sender))
+            (try! (as-contract
+              (contract-call? .token transfer u0 payout tx-sender seller)
+            ))
+          )
+          (ok payout)
+        )
+      )
+    )
+  )
+)
+
+(define-public (sell-no
+    (market-id uint)
+    (shares uint)
+  )
+  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
+    (begin
+      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
+      (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
+      (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
+      (asserts! (> shares u0) ERR_INVALID_PARAMS)
+      
+      ;; Check user has enough shares
+      (let ((user-balance (get-user-balance (get token-id-no market) tx-sender)))
+        (asserts! (>= user-balance shares) ERR_INSUFFICIENT_SHARES)
+        
+        ;; Calculate payout using LMSR
+        (let ((payout (unwrap! (get-sell-payout market-id u0 shares) ERR_INVALID_PARAMS)))
+          (asserts! (> payout u0) ERR_INVALID_PARAMS)
+          ;; Burn outcome tokens
+          (try! (burn-token (get token-id-no market) tx-sender shares))
+          ;; Update market state
+          (map-set markets market-id (merge market { q-no: (- (get q-no market) shares) }))
+          ;; Transfer collateral to seller
+          (let ((seller tx-sender))
+            (try! (as-contract
+              (contract-call? .token transfer u0 payout tx-sender seller)
+            ))
+          )
+          (ok payout)
+        )
+      )
+    )
+  )
+)
+
 ;; Retrieve complete market data structure
 (define-read-only (get-market (market-id uint))
   (ok (map-get? markets market-id))
