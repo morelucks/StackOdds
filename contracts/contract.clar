@@ -610,6 +610,7 @@
 (define-public (buy-yes
     (market-id uint)
     (shares uint)
+    (country-code (string-ascii 2))
   )
   (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
     (begin
