@@ -137,6 +137,9 @@
     (asserts! (or (not (var-get kyc-required))
                   (default-to false (map-get? kyc-verified user)))
               ERR_NOT_WHITELISTED)
+    ;; Check geographic restrictions
+    (asserts! (not (default-to false (map-get? geo-restricted country-code))) 
+              ERR_GEO_RESTRICTED)
     (ok true)
   )
 )
