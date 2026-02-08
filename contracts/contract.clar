@@ -506,23 +506,26 @@
 ;; Public entry point for purchasing NO outcome shares
 (define-public (buy-no
     (market-id uint)
-    (amount uint)
+    (shares uint)
   )
   (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
     (begin
       (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
       (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
       (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
-      ;; Simple fixed-price trade: 1 collateral per share
-      (asserts! (> amount u0) ERR_INVALID_PARAMS)
-      (try! (contract-call? .token transfer u0 amount tx-sender
-        (as-contract tx-sender)
-      ))
-
-      (map-set markets market-id (merge market { q-no: (+ (get q-no market) amount) }))
-      ;; Mint NO outcome tokens internally (no contract-call needed)
-      (mint-token (get token-id-no market) tx-sender amount)
-      (ok true)
+      (asserts! (> shares u0) ERR_INVALID_PARAMS)
+      
+      ;; Calculate dynamic cost using LMSR
+      (let ((cost (unwrap! (get-buy-cost market-id u0 shares) ERR_INVALID_PARAMS)))
+        (asserts! (> cost u0) ERR_INVALID_PARAMS)
+        ;; Transfer collateral from buyer to contract
+        (try! (contract-call? .token transfer u0 cost tx-sender (as-contract tx-sender)))
+        ;; Update market state
+        (map-set markets market-id (merge market { q-no: (+ (get q-no market) shares) }))
+        ;; Mint outcome tokens
+        (mint-token (get token-id-no market) tx-sender shares)
+        (ok cost)
+      )
     )
   )
 )
