@@ -288,6 +288,21 @@
   )
 )
 
+;; Calculates LMSR cost function: C(q) = b * ln(e^(q_yes/b) + e^(q_no/b))
+;; Returns cost in collateral tokens (scaled by 1e6)
+(define-private (calculate-cost (b uint) (q-yes uint) (q-no uint))
+  (let (
+      (b-int (to-int b))
+      (q-yes-int (to-int q-yes))
+      (q-no-int (to-int q-no))
+      ;; Calculate q/b ratios (scaled by 1e6)
+      (ratio-yes (if (> b u0) (/ (* q-yes-int 1000000) b-int) 0))
+      (ratio-no (if (> b u0) (/ (* q-no-int 1000000) b-int) 0))
+    )
+    u0
+  )
+)
+
 ;; ============================================================================
 ;; Market Functions
 ;; ============================================================================
