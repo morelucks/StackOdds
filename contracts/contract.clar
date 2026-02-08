@@ -174,6 +174,9 @@
 )
 
 ;; Security & Compliance Management Functions
+;; Owner-only functions to manage compliance settings
+
+;; Add or remove a user from the blacklist
 (define-public (set-blacklist
     (user principal)
     (blacklisted bool)
