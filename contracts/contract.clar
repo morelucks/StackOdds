@@ -144,6 +144,10 @@
   )
 )
 
+(define-read-only (is-user-compliant (user principal) (country-code (string-ascii 2)))
+  (check-user-compliance user country-code)
+)
+
 (define-public (set-admin-role
     (who principal)
     (enabled bool)
