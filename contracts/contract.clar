@@ -117,6 +117,7 @@
 (define-data-var whitelist-enabled bool false)
 (define-data-var kyc-required bool false)
 (define-data-var max-market-duration uint u52560) ;; ~1 year in blocks
+(define-data-var min-resolution-delay uint u144) ;; ~1 day in blocks
 
 ;; Role checks and configuration
 (define-read-only (is-authorized (caller principal))
