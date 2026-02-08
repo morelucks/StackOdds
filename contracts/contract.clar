@@ -223,6 +223,14 @@
   )
 )
 
+(define-public (set-kyc-required (required bool))
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+    (var-set kyc-required required)
+    (ok true)
+  )
+)
+
 ;; Setup function to configure owner and collateral token address
 (define-public (initialize
     (owner principal)
