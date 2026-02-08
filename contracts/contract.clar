@@ -239,6 +239,14 @@
   )
 )
 
+(define-public (set-min-resolution-delay (delay uint))
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+    (var-set min-resolution-delay delay)
+    (ok true)
+  )
+)
+
 ;; Setup function to configure owner and collateral token address
 (define-public (initialize
     (owner principal)
