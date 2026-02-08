@@ -116,6 +116,7 @@
 (define-data-var collateral-token principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
 (define-data-var whitelist-enabled bool false)
 (define-data-var kyc-required bool false)
+(define-data-var max-market-duration uint u52560) ;; ~1 year in blocks
 
 ;; Role checks and configuration
 (define-read-only (is-authorized (caller principal))
