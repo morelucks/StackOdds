@@ -125,6 +125,7 @@
 )
 
 ;; Security & Compliance Checks
+;; Validates user compliance with blacklist, whitelist, KYC, and geographic restrictions
 (define-private (check-user-compliance (user principal) (country-code (string-ascii 2)))
   (begin
     ;; Check blacklist
