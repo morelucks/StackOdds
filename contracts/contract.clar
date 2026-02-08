@@ -133,6 +133,10 @@
     (asserts! (or (not (var-get whitelist-enabled)) 
                   (default-to false (map-get? whitelist user))) 
               ERR_NOT_WHITELISTED)
+    ;; Check KYC if required
+    (asserts! (or (not (var-get kyc-required))
+                  (default-to false (map-get? kyc-verified user)))
+              ERR_NOT_WHITELISTED)
     (ok true)
   )
 )
