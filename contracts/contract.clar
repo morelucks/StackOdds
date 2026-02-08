@@ -16,6 +16,7 @@
 (define-constant ERR_INSUFFICIENT_BALANCE (err u2011))
 (define-constant ERR_BLACKLISTED (err u2012))
 (define-constant ERR_NOT_WHITELISTED (err u2013))
+(define-constant ERR_GEO_RESTRICTED (err u2014))
 
 ;; SIP-010 Fungible Token Trait
 ;; Defines the standard interface for fungible tokens (USDCx, STX, etc.)
