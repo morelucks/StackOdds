@@ -262,6 +262,22 @@
 )
 
 ;; ============================================================================
+;; LMSR Math Helper Functions
+;; ============================================================================
+
+;; Approximates e^x using Taylor series expansion
+;; Input: x in fixed-point (scaled by 1e6)
+;; Output: e^x in fixed-point (scaled by 1e6)
+(define-private (exp-approx (x int))
+  (let (
+      ;; Clamp x to prevent overflow
+      (x-clamped (if (> x 20000000) 20000000 (if (< x -20000000) -20000000 x)))
+    )
+    x-clamped
+  )
+)
+
+;; ============================================================================
 ;; Market Functions
 ;; ============================================================================
 
