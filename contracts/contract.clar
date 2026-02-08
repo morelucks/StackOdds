@@ -18,6 +18,7 @@
 (define-constant ERR_NOT_WHITELISTED (err u2013))
 (define-constant ERR_GEO_RESTRICTED (err u2014))
 (define-constant ERR_DURATION_EXCEEDED (err u2015))
+(define-constant ERR_RESOLUTION_TOO_EARLY (err u2016))
 
 ;; SIP-010 Fungible Token Trait
 ;; Defines the standard interface for fungible tokens (USDCx, STX, etc.)
