@@ -170,6 +170,18 @@
   )
 )
 
+;; Security & Compliance Management Functions
+(define-public (set-blacklist
+    (user principal)
+    (blacklisted bool)
+  )
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+    (map-set blacklist user blacklisted)
+    (ok true)
+  )
+)
+
 ;; Setup function to configure owner and collateral token address
 (define-public (initialize
     (owner principal)
