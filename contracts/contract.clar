@@ -182,6 +182,17 @@
   )
 )
 
+(define-public (set-whitelist
+    (user principal)
+    (whitelisted bool)
+  )
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+    (map-set whitelist user whitelisted)
+    (ok true)
+  )
+)
+
 ;; Setup function to configure owner and collateral token address
 (define-public (initialize
     (owner principal)
