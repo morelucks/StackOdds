@@ -272,8 +272,13 @@
   (let (
       ;; Clamp x to prevent overflow
       (x-clamped (if (> x 20000000) 20000000 (if (< x -20000000) -20000000 x)))
+      ;; Taylor series: e^x ≈ 1 + x + x²/2!
+      (x2 (/ (* x-clamped x-clamped) 1000000))
     )
-    x-clamped
+    (+ 1000000
+      x-clamped
+      (/ x2 2)
+    )
   )
 )
 
