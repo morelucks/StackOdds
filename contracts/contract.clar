@@ -996,6 +996,14 @@
   (ok (var-get protocol-fee-collected))
 )
 
+;; Check if market is paused
+(define-read-only (is-market-paused (market-id uint))
+  (ok (or 
+    (var-get emergency-pause)
+    (default-to false (map-get? market-paused market-id))
+  ))
+)
+
 ;; Expose the contract owner address
 (define-read-only (get-owner)
   (ok (var-get contract-owner))
