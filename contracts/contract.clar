@@ -605,6 +605,14 @@
   (/ (* amount (var-get trading-fee-rate)) u1000000)
 )
 
+;; Check if market is paused
+(define-private (is-market-active (market-id uint))
+  (and 
+    (not (var-get emergency-pause))
+    (not (default-to false (map-get? market-paused market-id)))
+  )
+)
+
 ;; ============================================================================
 ;; Market Functions
 ;; ============================================================================
