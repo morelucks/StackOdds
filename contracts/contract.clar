@@ -122,6 +122,7 @@
 (define-data-var min-resolution-delay uint u144) ;; ~1 day in blocks
 (define-data-var trading-fee-rate uint u10000) ;; 1% = 10000 (basis points, scaled by 1e6)
 (define-data-var protocol-fee-collected uint u0)
+(define-data-var emergency-pause bool false)
 
 ;; Role checks and configuration
 (define-read-only (is-authorized (caller principal))
