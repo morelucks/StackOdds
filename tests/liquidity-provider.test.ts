@@ -27,4 +27,47 @@ describe("Liquidity Provider Tests", () => {
     );
     expect(result).toBeOk(Cl.uint(1000));
   });
+
+  it("should allow multiple LPs to add liquidity", () => {
+    simnet.callPublicFn("contract", "add-liquidity", [Cl.uint(1), Cl.uint(1000)], lp1);
+    const { result } = simnet.callPublicFn("contract", "add-liquidity", [Cl.uint(1), Cl.uint(500)], lp2);
+    expect(result).toBeOk();
+  });
+
+  it("should calculate proportional LP shares", () => {
+    simnet.callPublicFn("contract", "add-liquidity", [Cl.uint(1), Cl.uint(1000)], lp1);
+    simnet.callPublicFn("contract", "add-liquidity", [Cl.uint(1), Cl.uint(1000)], lp2);
+
+    const totalShares = simnet.callReadOnlyFn(
+      "contract",
+      "get-total-lp-shares",
+      [Cl.uint(1)],
+      deployer
+    );
+    expect(totalShares.result).toBeOk(Cl.uint(2000));
+  });
+
+  it("should allow removing liquidity", () => {
+    simnet.callPublicFn("contract", "add-liquidity", [Cl.uint(1), Cl.uint(1000)], lp1);
+
+    const { result } = simnet.callPublicFn(
+      "contract",
+      "remove-liquidity",
+      [Cl.uint(1), Cl.uint(500)],
+      lp1
+    );
+    expect(result).toBeOk();
+  });
+
+  it("should prevent removing more shares than owned", () => {
+    simnet.callPublicFn("contract", "add-liquidity", [Cl.uint(1), Cl.uint(1000)], lp1);
+
+    const { result } = simnet.callPublicFn(
+      "contract",
+      "remove-liquidity",
+      [Cl.uint(1), Cl.uint(2000)],
+      lp1
+    );
+    expect(result).toBeErr(Cl.uint(2006)); // ERR_INSUFFICIENT_SHARES
+  });
 });
