@@ -917,6 +917,34 @@
   (ok (map-get? markets market-id))
 )
 
+;; Add liquidity to a market
+(define-public (add-liquidity
+    (market-id uint)
+    (amount uint)
+  )
+  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
+    (begin
+      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
+      (asserts! (> amount u0) ERR_INVALID_PARAMS)
+      
+      ;; Transfer collateral to contract
+      (try! (contract-call? .token transfer u0 amount tx-sender (as-contract tx-sender)))
+      
+      ;; Calculate LP shares (proportional to contribution)
+      (let (
+          (current-lp-shares (default-to u0 (map-get? total-lp-shares market-id)))
+          (new-shares (if (is-eq current-lp-shares u0) amount (/ (* amount current-lp-shares) (get b market))))
+          (user-current-shares (default-to u0 (map-get? lp-shares { market-id: market-id, provider: tx-sender })))
+        )
+        ;; Update LP shares
+        (map-set lp-shares { market-id: market-id, provider: tx-sender } (+ user-current-shares new-shares))
+        (map-set total-lp-shares market-id (+ current-lp-shares new-shares))
+        (ok new-shares)
+      )
+    )
+  )
+)
+
 ;; Number of markets that have been created so far
 (define-read-only (get-market-count)
   (ok (default-to u0 (map-get? market-count u0)))
