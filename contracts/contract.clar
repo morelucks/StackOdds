@@ -1004,6 +1004,11 @@
   ))
 )
 
+;; Get current trading fee rate
+(define-read-only (get-trading-fee-rate)
+  (ok (var-get trading-fee-rate))
+)
+
 ;; Expose the contract owner address
 (define-read-only (get-owner)
   (ok (var-get contract-owner))
