@@ -600,6 +600,11 @@
   )
 )
 
+;; Calculate trading fee for a given amount
+(define-private (calculate-fee (amount uint))
+  (/ (* amount (var-get trading-fee-rate)) u1000000)
+)
+
 ;; ============================================================================
 ;; Market Functions
 ;; ============================================================================
