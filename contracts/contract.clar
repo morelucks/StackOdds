@@ -307,6 +307,15 @@
   )
 )
 
+(define-public (withdraw-protocol-fees (amount uint))
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+    (asserts! (<= amount (var-get protocol-fee-collected)) ERR_INSUFFICIENT_BALANCE)
+    (var-set protocol-fee-collected (- (var-get protocol-fee-collected) amount))
+    (as-contract (contract-call? .token transfer u0 amount tx-sender (var-get contract-owner)))
+  )
+)
+
 ;; Setup function to configure owner and collateral token address
 (define-public (initialize
     (owner principal)
