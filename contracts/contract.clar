@@ -132,6 +132,12 @@
   uint
 )
 
+;; Market fee earnings for LP distribution
+(define-map market-fee-pool
+  uint
+  uint
+)
+
 (define-data-var contract-owner principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
 (define-data-var collateral-token principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
 (define-data-var whitelist-enabled bool false)
