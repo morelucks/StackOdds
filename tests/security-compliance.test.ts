@@ -62,4 +62,21 @@ describe("Security & Compliance Tests", () => {
     );
     expect(result).toBeOk(Cl.bool(true));
   });
+
+  it("should block geo-restricted countries", () => {
+    simnet.callPublicFn(
+      "contract",
+      "set-geo-restriction",
+      [Cl.stringAscii("KP"), Cl.bool(true)],
+      deployer
+    );
+
+    const { result } = simnet.callPublicFn(
+      "contract",
+      "is-user-compliant",
+      [Cl.principal(user1), Cl.stringAscii("KP")],
+      user1
+    );
+    expect(result).toBeErr(Cl.uint(2014)); // ERR_GEO_RESTRICTED
+  });
 });
