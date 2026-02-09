@@ -951,6 +951,7 @@
 )
 
 ;; Remove liquidity from a market
+;; Burns LP shares and returns proportional collateral to the provider
 (define-public (remove-liquidity
     (market-id uint)
     (lp-shares-amount uint)
