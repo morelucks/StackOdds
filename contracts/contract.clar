@@ -605,6 +605,7 @@
 )
 
 ;; Calculate trading fee for a given amount
+;; Fee is calculated as: amount * fee_rate / 1e6
 (define-private (calculate-fee (amount uint))
   (/ (* amount (var-get trading-fee-rate)) u1000000)
 )
