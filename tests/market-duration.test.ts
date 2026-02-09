@@ -42,4 +42,32 @@ describe("Market Duration Tests", () => {
     );
     expect(result).toBeOk();
   });
+
+  it("should enforce minimum resolution delay", () => {
+    const marketId = 1;
+    
+    // Try to resolve immediately after end time
+    const { result } = simnet.callPublicFn(
+      "contract",
+      "resolve-market",
+      [Cl.uint(marketId), Cl.bool(true)],
+      deployer
+    );
+    expect(result).toBeErr(Cl.uint(2016)); // ERR_RESOLUTION_TOO_EARLY
+  });
+
+  it("should allow resolution after delay period", () => {
+    const marketId = 1;
+    
+    // Advance blocks past end time + delay
+    simnet.mineEmptyBlocks(200);
+
+    const { result } = simnet.callPublicFn(
+      "contract",
+      "resolve-market",
+      [Cl.uint(marketId), Cl.bool(true)],
+      deployer
+    );
+    expect(result).toBeOk(Cl.bool(true));
+  });
 });
