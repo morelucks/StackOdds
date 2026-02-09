@@ -282,6 +282,15 @@
   )
 )
 
+;; Fee and pause management
+(define-public (set-trading-fee-rate (rate uint))
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+    (var-set trading-fee-rate rate)
+    (ok true)
+  )
+)
+
 ;; Setup function to configure owner and collateral token address
 (define-public (initialize
     (owner principal)
