@@ -991,6 +991,11 @@
   (ok (default-to u0 (map-get? total-lp-shares market-id)))
 )
 
+;; Get protocol fee collected
+(define-read-only (get-protocol-fees)
+  (ok (var-get protocol-fee-collected))
+)
+
 ;; Expose the contract owner address
 (define-read-only (get-owner)
   (ok (var-get contract-owner))
