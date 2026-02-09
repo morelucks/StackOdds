@@ -26,4 +26,34 @@ describe("Pause Mechanism Tests", () => {
     );
     expect(result).toBeErr(Cl.uint(2017)); // ERR_MARKET_PAUSED
   });
+
+  it("should pause individual market", () => {
+    const { result } = simnet.callPublicFn(
+      "contract",
+      "set-market-pause",
+      [Cl.uint(1), Cl.bool(true)],
+      deployer
+    );
+    expect(result).toBeOk(Cl.bool(true));
+  });
+
+  it("should block trading on paused market only", () => {
+    simnet.callPublicFn("contract", "set-market-pause", [Cl.uint(1), Cl.bool(true)], deployer);
+
+    const result1 = simnet.callPublicFn(
+      "contract",
+      "buy-yes",
+      [Cl.uint(1), Cl.uint(100), Cl.stringAscii("US")],
+      user1
+    );
+    expect(result1.result).toBeErr(Cl.uint(2017)); // ERR_MARKET_PAUSED
+
+    const result2 = simnet.callPublicFn(
+      "contract",
+      "buy-yes",
+      [Cl.uint(2), Cl.uint(100), Cl.stringAscii("US")],
+      user1
+    );
+    expect(result2.result).toBeOk(); // Market 2 should work
+  });
 });
