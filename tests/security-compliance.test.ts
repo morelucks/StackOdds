@@ -32,4 +32,34 @@ describe("Security & Compliance Tests", () => {
     );
     expect(result).toBeErr(Cl.uint(2012)); // ERR_BLACKLISTED
   });
+
+  it("should enforce whitelist when enabled", () => {
+    simnet.callPublicFn(
+      "contract",
+      "set-whitelist-enabled",
+      [Cl.bool(true)],
+      deployer
+    );
+
+    const { result } = simnet.callPublicFn(
+      "contract",
+      "buy-yes",
+      [Cl.uint(1), Cl.uint(100), Cl.stringAscii("US")],
+      user1
+    );
+    expect(result).toBeErr(Cl.uint(2013)); // ERR_NOT_WHITELISTED
+  });
+
+  it("should allow whitelisted user to trade", () => {
+    simnet.callPublicFn("contract", "set-whitelist-enabled", [Cl.bool(true)], deployer);
+    simnet.callPublicFn("contract", "set-whitelist", [Cl.principal(user1), Cl.bool(true)], deployer);
+
+    const { result } = simnet.callPublicFn(
+      "contract",
+      "is-user-compliant",
+      [Cl.principal(user1), Cl.stringAscii("US")],
+      user1
+    );
+    expect(result).toBeOk(Cl.bool(true));
+  });
 });
