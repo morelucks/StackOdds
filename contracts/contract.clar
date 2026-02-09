@@ -945,6 +945,37 @@
   )
 )
 
+;; Remove liquidity from a market
+(define-public (remove-liquidity
+    (market-id uint)
+    (lp-shares-amount uint)
+  )
+  (let (
+      (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
+      (user-shares (default-to u0 (map-get? lp-shares { market-id: market-id, provider: tx-sender })))
+      (total-shares (default-to u0 (map-get? total-lp-shares market-id)))
+    )
+    (begin
+      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
+      (asserts! (>= user-shares lp-shares-amount) ERR_INSUFFICIENT_SHARES)
+      (asserts! (> lp-shares-amount u0) ERR_INVALID_PARAMS)
+      
+      ;; Calculate withdrawal amount (proportional to LP shares)
+      (let ((withdrawal-amount (/ (* lp-shares-amount (get b market)) total-shares)))
+        ;; Update LP shares
+        (map-set lp-shares { market-id: market-id, provider: tx-sender } (- user-shares lp-shares-amount))
+        (map-set total-lp-shares market-id (- total-shares lp-shares-amount))
+        
+        ;; Transfer collateral back to LP
+        (let ((recipient tx-sender))
+          (try! (as-contract (contract-call? .token transfer u0 withdrawal-amount tx-sender recipient)))
+        )
+        (ok withdrawal-amount)
+      )
+    )
+  )
+)
+
 ;; Number of markets that have been created so far
 (define-read-only (get-market-count)
   (ok (default-to u0 (map-get? market-count u0)))
