@@ -986,6 +986,11 @@
   (ok (default-to u0 (map-get? lp-shares { market-id: market-id, provider: provider })))
 )
 
+;; Get total LP shares for a market
+(define-read-only (get-total-lp-shares (market-id uint))
+  (ok (default-to u0 (map-get? total-lp-shares market-id)))
+)
+
 ;; Expose the contract owner address
 (define-read-only (get-owner)
   (ok (var-get contract-owner))
