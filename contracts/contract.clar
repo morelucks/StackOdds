@@ -710,13 +710,19 @@
       ;; Calculate dynamic cost using LMSR
       (let ((cost (unwrap! (get-buy-cost market-id u1 shares) ERR_INVALID_PARAMS)))
         (asserts! (> cost u0) ERR_INVALID_PARAMS)
-        ;; Transfer collateral from buyer to contract
-        (try! (contract-call? .token transfer u0 cost tx-sender (as-contract tx-sender)))
-        ;; Update market state
-        (map-set markets market-id (merge market { q-yes: (+ (get q-yes market) shares) }))
-        ;; Mint outcome tokens
-        (mint-token (get token-id-yes market) tx-sender shares)
-        (ok cost)
+        ;; Calculate and collect fee
+        (let ((fee (calculate-fee cost))
+              (total-cost (+ cost fee)))
+          ;; Transfer collateral from buyer to contract
+          (try! (contract-call? .token transfer u0 total-cost tx-sender (as-contract tx-sender)))
+          ;; Add fee to protocol pool
+          (var-set protocol-fee-collected (+ (var-get protocol-fee-collected) fee))
+          ;; Update market state
+          (map-set markets market-id (merge market { q-yes: (+ (get q-yes market) shares) }))
+          ;; Mint outcome tokens
+          (mint-token (get token-id-yes market) tx-sender shares)
+          (ok cost)
+        )
       )
     )
   )
