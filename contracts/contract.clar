@@ -295,6 +295,8 @@
   )
 )
 
+;; Pause or unpause all trading globally
+;; Emergency function to halt all market activity
 (define-public (set-emergency-pause (paused bool))
   (begin
     (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
