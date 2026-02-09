@@ -699,6 +699,9 @@
       ;; Compliance checks
       (try! (check-user-compliance tx-sender country-code))
       
+      ;; Check market is active
+      (asserts! (is-market-active market-id) ERR_MARKET_PAUSED)
+      
       (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
       (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
       (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
