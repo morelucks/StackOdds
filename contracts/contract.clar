@@ -922,6 +922,7 @@
 )
 
 ;; Add liquidity to a market
+;; Liquidity providers receive LP shares proportional to their contribution
 (define-public (add-liquidity
     (market-id uint)
     (amount uint)
