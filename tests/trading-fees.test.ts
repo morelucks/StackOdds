@@ -28,4 +28,24 @@ describe("Trading Fee Tests", () => {
     const feesAfter = simnet.callReadOnlyFn("contract", "get-protocol-fees", [], deployer);
     expect(feesAfter).toBeGreaterThan(feesBefore);
   });
+
+  it("should allow owner to withdraw protocol fees", () => {
+    const { result } = simnet.callPublicFn(
+      "contract",
+      "withdraw-protocol-fees",
+      [Cl.uint(100)],
+      deployer
+    );
+    expect(result).toBeOk(Cl.bool(true));
+  });
+
+  it("should prevent non-owner from withdrawing fees", () => {
+    const { result } = simnet.callPublicFn(
+      "contract",
+      "withdraw-protocol-fees",
+      [Cl.uint(100)],
+      user1
+    );
+    expect(result).toBeErr(Cl.uint(2001)); // ERR_UNAUTHORIZED
+  });
 });
