@@ -120,6 +120,7 @@
 (define-data-var kyc-required bool false)
 (define-data-var max-market-duration uint u52560) ;; ~1 year in blocks
 (define-data-var min-resolution-delay uint u144) ;; ~1 day in blocks
+(define-data-var trading-fee-rate uint u10000) ;; 1% = 10000 (basis points, scaled by 1e6)
 
 ;; Role checks and configuration
 (define-read-only (is-authorized (caller principal))
