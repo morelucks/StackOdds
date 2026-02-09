@@ -286,6 +286,7 @@
 ;; Owner-only functions to configure trading fees and pause markets
 
 ;; Set the trading fee rate (in basis points, scaled by 1e6)
+;; Example: 10000 = 1%, 5000 = 0.5%
 (define-public (set-trading-fee-rate (rate uint))
   (begin
     (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
