@@ -120,6 +120,12 @@
   bool
 )
 
+;; Liquidity provider shares
+(define-map lp-shares
+  { market-id: uint, provider: principal }
+  uint
+)
+
 (define-data-var contract-owner principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
 (define-data-var collateral-token principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
 (define-data-var whitelist-enabled bool false)
