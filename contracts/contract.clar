@@ -299,6 +299,14 @@
   )
 )
 
+(define-public (set-market-pause (market-id uint) (paused bool))
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+    (map-set market-paused market-id paused)
+    (ok true)
+  )
+)
+
 ;; Setup function to configure owner and collateral token address
 (define-public (initialize
     (owner principal)
