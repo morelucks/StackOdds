@@ -42,4 +42,48 @@ describe("Dynamic Pricing Tests", () => {
     );
     expect(priceNo.result).toBeOk();
   });
+
+  it("should have prices sum to approximately 1", () => {
+    const priceYes = simnet.callReadOnlyFn(
+      "contract",
+      "get-price",
+      [Cl.uint(1), Cl.uint(1)],
+      user1
+    );
+    const priceNo = simnet.callReadOnlyFn(
+      "contract",
+      "get-price",
+      [Cl.uint(1), Cl.uint(0)],
+      user1
+    );
+    
+    // Prices should sum to ~1000000 (scaled by 1e6)
+    const sum = priceYes.result + priceNo.result;
+    expect(sum).toBeCloseTo(1000000, 1000);
+  });
+
+  it("should increase price when buying", () => {
+    const priceBefore = simnet.callReadOnlyFn(
+      "contract",
+      "get-price",
+      [Cl.uint(1), Cl.uint(1)],
+      user1
+    );
+
+    simnet.callPublicFn(
+      "contract",
+      "buy-yes",
+      [Cl.uint(1), Cl.uint(1000), Cl.stringAscii("US")],
+      user1
+    );
+
+    const priceAfter = simnet.callReadOnlyFn(
+      "contract",
+      "get-price",
+      [Cl.uint(1), Cl.uint(1)],
+      user1
+    );
+
+    expect(priceAfter.result).toBeGreaterThan(priceBefore.result);
+  });
 });
