@@ -126,6 +126,12 @@
   uint
 )
 
+;; Total LP shares per market
+(define-map total-lp-shares
+  uint
+  uint
+)
+
 (define-data-var contract-owner principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
 (define-data-var collateral-token principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
 (define-data-var whitelist-enabled bool false)
