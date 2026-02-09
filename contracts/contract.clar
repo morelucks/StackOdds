@@ -611,6 +611,7 @@
 )
 
 ;; Check if market is paused
+;; Returns true if either emergency pause is active or market-specific pause is set
 (define-private (is-market-active (market-id uint))
   (and 
     (not (var-get emergency-pause))
