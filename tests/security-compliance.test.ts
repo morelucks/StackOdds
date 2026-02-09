@@ -15,4 +15,21 @@ describe("Security & Compliance Tests", () => {
     );
     expect(result).toBeOk(Cl.bool(true));
   });
+
+  it("should prevent blacklisted user from trading", () => {
+    simnet.callPublicFn(
+      "contract",
+      "set-blacklist",
+      [Cl.principal(user1), Cl.bool(true)],
+      deployer
+    );
+
+    const { result } = simnet.callPublicFn(
+      "contract",
+      "buy-yes",
+      [Cl.uint(1), Cl.uint(100), Cl.stringAscii("US")],
+      user1
+    );
+    expect(result).toBeErr(Cl.uint(2012)); // ERR_BLACKLISTED
+  });
 });
