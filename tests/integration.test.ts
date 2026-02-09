@@ -59,4 +59,62 @@ describe("Integration Tests", () => {
     );
     expect(claim.result).toBeOk();
   });
+
+  it("should handle LP and trading together", () => {
+    // Add liquidity
+    const addLiq = simnet.callPublicFn(
+      "contract",
+      "add-liquidity",
+      [Cl.uint(1), Cl.uint(2000)],
+      trader1
+    );
+    expect(addLiq.result).toBeOk();
+
+    // Trade on market
+    const trade = simnet.callPublicFn(
+      "contract",
+      "buy-yes",
+      [Cl.uint(1), Cl.uint(100), Cl.stringAscii("US")],
+      trader2
+    );
+    expect(trade.result).toBeOk();
+
+    // Remove liquidity
+    const removeLiq = simnet.callPublicFn(
+      "contract",
+      "remove-liquidity",
+      [Cl.uint(1), Cl.uint(1000)],
+      trader1
+    );
+    expect(removeLiq.result).toBeOk();
+  });
+
+  it("should handle fees and pause together", () => {
+    // Set fee rate
+    simnet.callPublicFn("contract", "set-trading-fee-rate", [Cl.uint(50000)], deployer);
+
+    // Trade to collect fees
+    simnet.callPublicFn(
+      "contract",
+      "buy-yes",
+      [Cl.uint(1), Cl.uint(1000), Cl.stringAscii("US")],
+      trader1
+    );
+
+    // Check fees collected
+    const fees = simnet.callReadOnlyFn("contract", "get-protocol-fees", [], deployer);
+    expect(fees.result).toBeOk();
+
+    // Pause market
+    simnet.callPublicFn("contract", "set-market-pause", [Cl.uint(1), Cl.bool(true)], deployer);
+
+    // Try to trade (should fail)
+    const pausedTrade = simnet.callPublicFn(
+      "contract",
+      "buy-no",
+      [Cl.uint(1), Cl.uint(100), Cl.stringAscii("US")],
+      trader2
+    );
+    expect(pausedTrade.result).toBeErr(Cl.uint(2017));
+  });
 });
