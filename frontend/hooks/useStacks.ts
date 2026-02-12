@@ -8,31 +8,17 @@ import { STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
 const NETWORK = process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet' ? STACKS_MAINNET : STACKS_TESTNET;
 
 export const useStacks = () => {
-  
-  const [userData, setUserData] = useState(() => {
-    try {
-      const data = getLocalStorage();
-      return data || undefined;
-    } catch (error) {
-      console.warn('Error loading user data:', error);
-      return undefined;
-    }
-  });
+
+  const [userData, setUserData] = useState<any>(undefined);
   const [isLoading, setIsLoading] = useState(false);
-  const [isStacksConnected, setIsStacksConnected] = useState(() => {
-    try {
-      return isConnected();
-    } catch (error) {
-      return false;
-    }
-  });
+  const [isStacksConnected, setIsStacksConnected] = useState(false);
 
   useEffect(() => {
     const checkConnection = () => {
       try {
         const connected = isConnected();
         setIsStacksConnected(connected);
-        
+
         if (connected) {
           const data = getLocalStorage();
           if (data) {
@@ -56,7 +42,7 @@ export const useStacks = () => {
 
     // Poll for changes (in case wallet connects externally)
     const interval = setInterval(checkConnection, 500);
-    
+
     // Also listen for storage events (when wallet connects in another tab)
     const handleStorageChange = (e: StorageEvent) => {
       // Only react to relevant storage changes
@@ -64,16 +50,16 @@ export const useStacks = () => {
         checkConnection();
       }
     };
-    
+
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Also listen for focus events (user might have connected in another tab)
     const handleFocus = () => {
       checkConnection();
     };
-    
+
     window.addEventListener('focus', handleFocus);
-    
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('storage', handleStorageChange);
@@ -85,7 +71,8 @@ export const useStacks = () => {
     setIsLoading(true);
     try {
       // Check if already connected
-      if (isConnected()) {
+      if (typeof window !== 'undefined' && isConnected()) {
+        Broadway
         console.log('Already authenticated');
         const data = getLocalStorage();
         if (data) {
@@ -99,7 +86,7 @@ export const useStacks = () => {
       // Connect to wallet
       const response = await connect();
       console.log('Connected:', response.addresses);
-      
+
       // Update state with connection data
       // After connect(), get the data from localStorage
       // The response.addresses is already stored in localStorage by the connect() function
@@ -108,7 +95,7 @@ export const useStacks = () => {
         setUserData(data);
         setIsStacksConnected(true);
       }
-      
+
       setIsLoading(false);
     } catch (error) {
       console.error('Error in connectWallet:', error);
@@ -138,7 +125,7 @@ export const useStacks = () => {
   const userSession = {
     isUserSignedIn: () => {
       try {
-        return isConnected();
+        return typeof window !== 'undefined' && isConnected();
       } catch (error) {
         return false;
       }
