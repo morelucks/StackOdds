@@ -89,8 +89,8 @@
   uint
 )
 
-(define-data-var contract-owner principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
-(define-data-var collateral-token principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
+(define-data-var contract-owner principal 'SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB)
+(define-data-var collateral-token principal 'SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB)
 
 ;; Role checks and configuration
 (define-read-only (is-authorized (caller principal))
@@ -292,7 +292,7 @@
         )
         (begin
           ;; Collect the initial liquidity deposit from caller to this contract
-          (try! (contract-call? .token transfer u0 fund-amount caller
+          (try! (contract-call? .stackodds-token-v1 transfer u0 fund-amount caller
             (as-contract tx-sender)
           ))
 
@@ -346,7 +346,7 @@
       (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
       ;; Simple fixed-price trade: 1 collateral per share
       (asserts! (> amount u0) ERR_INVALID_PARAMS)
-      (try! (contract-call? .token transfer u0 amount tx-sender (as-contract tx-sender)))
+      (try! (contract-call? .stackodds-token-v1 transfer u0 amount tx-sender (as-contract tx-sender)))
       (map-set markets market-id (merge market { q-yes: (+ (get q-yes market) amount) }))
       (mint-token (get token-id-yes market) tx-sender amount)
       (ok true)
@@ -366,7 +366,7 @@
       (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
       ;; Simple fixed-price trade: 1 collateral per share
       (asserts! (> amount u0) ERR_INVALID_PARAMS)
-      (try! (contract-call? .token transfer u0 amount tx-sender
+      (try! (contract-call? .stackodds-token-v1 transfer u0 amount tx-sender
         (as-contract tx-sender)
       ))
 
@@ -422,9 +422,9 @@
         (begin
           (asserts! (> winning-shares u0) ERR_INSUFFICIENT_SHARES)
           (try! (burn-token token-id tx-sender winning-shares))
-          (let ((claimant tx-sender))
+           (let ((claimant tx-sender))
             (try! (as-contract
-              (contract-call? .token transfer u0 winning-shares tx-sender claimant)
+              (contract-call? .stackodds-token-v1 transfer u0 winning-shares tx-sender claimant)
             ))
           )
           (ok winning-shares)
