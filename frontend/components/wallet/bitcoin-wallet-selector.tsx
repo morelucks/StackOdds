@@ -47,7 +47,7 @@ export const BitcoinWalletSelector = ({
 
     // Poll for changes
     const interval = setInterval(checkSession, 500);
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -58,7 +58,7 @@ export const BitcoinWalletSelector = ({
 
   const connectToWallet = async () => {
     setIsConnecting(true);
-    
+
     try {
       // Check if already connected
       if (isConnected()) {
@@ -76,16 +76,16 @@ export const BitcoinWalletSelector = ({
       // This supports Leather Wallet, Xverse, and other Bitcoin wallets
       const response = await connect();
       console.log('Connected:', response.addresses);
-      
+
       // Update local state
       // The response.addresses is already stored in localStorage by the connect() function
       const data = getLocalStorage();
       if (data) {
         setLocalUserData(data);
       }
-      
+
       setIsConnecting(false);
-      
+
       // Trigger the onConnect callback which will update state in the hook
       onConnect();
     } catch (error) {
@@ -105,7 +105,7 @@ export const BitcoinWalletSelector = ({
 
   // Use local userData if available, fallback to prop
   const currentUserData = localUserData || userData;
-  const currentIsConnected = isConnected() || isConnectedProp;
+  const currentIsConnected = (typeof window !== 'undefined' && isConnected()) || isConnectedProp;
 
   // Extract address from userData - support both old and new API formats
   const getAddress = () => {
