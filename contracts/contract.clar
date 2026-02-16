@@ -15,6 +15,8 @@
 (define-constant ERR_MARKET_NOT_EXPIRED (err u2010))
 (define-constant ERR_INSUFFICIENT_BALANCE (err u2011))
 
+(define-constant MARKET_COUNT_KEY u0)
+
 ;; SIP-010 Fungible Token Trait
 ;; Defines the standard interface for fungible tokens (USDCx, STX, etc.)
 ;; This trait is used as a parameter type to enable flexible collateral token support.
@@ -257,13 +259,27 @@
       outcome: u0,
     })
     true
-
   )
 )
 
 ;; ============================================================================
 ;; Market Functions
 ;; ============================================================================
+
+(define-private (get-market-or-fail (market-id uint))
+  (let ((opt (map-get? markets market-id)))
+    (if (is-none opt)
+      (err u2005)
+      (ok (unwrap! opt (err u0)))
+    )))
+
+(define-private (validate-market-active (market-id uint))
+  (let ((market (try! (get-market-or-fail market-id))))
+    (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
+    (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
+    (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
+    (ok market)
+  ))
 
 ;; Establishes a new prediction market with specified parameters
 ;; Requires initial liquidity deposit from the creator
@@ -281,7 +297,7 @@
       (asserts! (> end-time start-time) ERR_INVALID_PARAMS)
       (asserts! (>= start-time block-height) ERR_INVALID_PARAMS)
       (let (
-          (current-count (default-to u0 (map-get? market-count u0)))
+          (current-count (default-to u0 (map-get? market-count MARKET_COUNT_KEY)))
           (market-id (+ current-count u1))
           ;; Scale liquidity parameter to 18-decimal internal representation
           (b-internal (* b u1000000000000))
@@ -292,7 +308,7 @@
         )
         (begin
           ;; Collect the initial liquidity deposit from caller to this contract
-          (try! (contract-call? .stackodds-token-v1 transfer u0 fund-amount caller
+          (try! (contract-call? .token transfer u0 fund-amount caller
             (as-contract tx-sender)
           ))
 
@@ -324,7 +340,7 @@
                 token-id-yes: token-id-yes,
                 token-id-no: token-id-no,
               })
-              (map-set market-count u0 market-id)
+              (map-set market-count MARKET_COUNT_KEY market-id)
               (ok market-id)
             )
           )
@@ -335,101 +351,54 @@
 )
 
 ;; Public entry point for purchasing YES outcome shares
-(define-public (buy-yes
-    (market-id uint)
-    (amount uint)
-  )
-  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
-    (begin
-      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
-      (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
-      (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
-      ;; Simple fixed-price trade: 1 collateral per share
-      (asserts! (> amount u0) ERR_INVALID_PARAMS)
-      (try! (contract-call? .stackodds-token-v1 transfer u0 amount tx-sender (as-contract tx-sender)))
-      (map-set markets market-id (merge market { q-yes: (+ (get q-yes market) amount) }))
-      (mint-token (get token-id-yes market) tx-sender amount)
-      (ok true)
-    )
+(define-public (buy-yes (market-id uint) (amount uint))
+  (let ((market (try! (validate-market-active market-id))))
+    (asserts! (> amount u0) ERR_INVALID_PARAMS)
+    (try! (contract-call? .token transfer u0 amount tx-sender (as-contract tx-sender)))
+    (map-set markets market-id (merge market { q-yes: (+ (get q-yes market) amount) }))
+    (mint-token (get token-id-yes market) tx-sender amount)
+    (ok true)
   )
 )
 
 ;; Public entry point for purchasing NO outcome shares
-(define-public (buy-no
-    (market-id uint)
-    (amount uint)
-  )
-  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
-    (begin
-      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
-      (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
-      (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
-      ;; Simple fixed-price trade: 1 collateral per share
-      (asserts! (> amount u0) ERR_INVALID_PARAMS)
-      (try! (contract-call? .stackodds-token-v1 transfer u0 amount tx-sender
-        (as-contract tx-sender)
-      ))
-
-      (map-set markets market-id (merge market { q-no: (+ (get q-no market) amount) }))
-      ;; Mint NO outcome tokens internally (no contract-call needed)
-      (mint-token (get token-id-no market) tx-sender amount)
-      (ok true)
-    )
+(define-public (buy-no (market-id uint) (amount uint))
+  (let ((market (try! (validate-market-active market-id))))
+    (asserts! (> amount u0) ERR_INVALID_PARAMS)
+    (try! (contract-call? .token transfer u0 amount tx-sender (as-contract tx-sender)))
+    (map-set markets market-id (merge market { q-no: (+ (get q-no market) amount) }))
+    (mint-token (get token-id-no market) tx-sender amount)
+    (ok true)
   )
 )
 
 ;; Finalize market outcome after end time has passed
-;; Only authorized roles can call this function
-(define-public (resolve-market
-    (market-id uint)
-    (yes-won bool)
-  )
-  (let (
-      (caller tx-sender)
-      (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
-    )
-    (begin
-      (asserts! (is-eq caller (var-get contract-owner)) ERR_UNAUTHORIZED)
-      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
-      (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
-      (asserts! (>= block-height (get end-time market)) ERR_MARKET_NOT_EXPIRED)
-      (map-set markets market-id (merge market { resolved: true, yes-won: yes-won }))
-      (ok true)
-    )
+(define-public (resolve-market (market-id uint) (yes-won bool))
+  (let ((market (try! (get-market-or-fail market-id))))
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+    (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
+    (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
+    (asserts! (>= block-height (get end-time market)) ERR_MARKET_NOT_EXPIRED)
+    (map-set markets market-id (merge market { resolved: true, yes-won: yes-won }))
+    (ok true)
   )
 )
 
 ;; Allows users to redeem their winning shares for collateral
-;; Burns outcome tokens and transfers equivalent collateral amount
-(define-public (claim
-    (market-id uint)
-  )
+(define-public (claim (market-id uint))
   (let (
-      (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
-      (winning-outcome (if (get yes-won market)
-        u1
-        u0
-      ))
-      (token-id (if (get yes-won market)
-        (get token-id-yes market)
-        (get token-id-no market)
-      ))
+      (market (try! (get-market-or-fail market-id)))
+      (token-id (if (get yes-won market) (get token-id-yes market) (get token-id-no market)))
     )
-    (begin
-      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
-      (asserts! (get resolved market) ERR_NOT_RESOLVED)
-      (let ((winning-shares (get-user-balance token-id tx-sender)))
-        (begin
-          (asserts! (> winning-shares u0) ERR_INSUFFICIENT_SHARES)
-          (try! (burn-token token-id tx-sender winning-shares))
-           (let ((claimant tx-sender))
-            (try! (as-contract
-              (contract-call? .stackodds-token-v1 transfer u0 winning-shares tx-sender claimant)
-            ))
-          )
-          (ok winning-shares)
-        )
-      )
+    (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
+    (asserts! (get resolved market) ERR_NOT_RESOLVED)
+    (let ((winning-shares (get-user-balance token-id tx-sender)))
+      (asserts! (> winning-shares u0) ERR_INSUFFICIENT_SHARES)
+      (try! (burn-token token-id tx-sender winning-shares))
+      (try! (as-contract
+        (contract-call? .token transfer u0 winning-shares tx-sender tx-sender)
+      ))
+      (ok winning-shares)
     )
   )
 )
@@ -441,7 +410,7 @@
 
 ;; Number of markets that have been created so far
 (define-read-only (get-market-count)
-  (ok (default-to u0 (map-get? market-count u0)))
+  (ok (default-to u0 (map-get? market-count MARKET_COUNT_KEY)))
 )
 
 ;; Expose the contract owner address
