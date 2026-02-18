@@ -200,14 +200,13 @@
   (ok (default-to u0 (map-get? total-supply-map token-id)))
 )
 
+;; ============================================================================
+;; Token Transfer Functions
+;; ============================================================================
+
 ;; Moves shares between user accounts
 ;; Requires sender to authorize the transfer
-(define-public (transfer
-    (token-id uint)
-    (amount uint)
-    (sender principal)
-    (recipient principal)
-  )
+(define-public (transfer (token-id uint) (amount uint) (sender principal) (recipient principal))
   (let (
     (sender-balance (get-user-balance token-id sender))
     (recipient-balance (get-user-balance token-id recipient))
