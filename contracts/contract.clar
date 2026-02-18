@@ -139,11 +139,12 @@
   )
 )
 
+;; ============================================================================
+;; Initialization
+;; ============================================================================
+
 ;; Setup function to configure owner and collateral token address
-(define-public (initialize
-    (owner principal)
-    (collateral principal)
-  )
+(define-public (initialize (owner principal) (collateral principal))
   (begin
     (var-set contract-owner owner)
     (var-set collateral-token collateral)
