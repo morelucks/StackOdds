@@ -1,1 +1,2 @@
 # FAQ
+## General Questions
