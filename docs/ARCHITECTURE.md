@@ -1,1 +1,2 @@
 # Contract Architecture
+## LMSR Implementation
