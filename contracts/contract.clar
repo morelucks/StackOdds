@@ -21,7 +21,12 @@
 (define-constant ERR_MARKET_NOT_EXPIRED (err u2010))
 (define-constant ERR_INSUFFICIENT_BALANCE (err u2011))
 
+;; ============================================================================
+;; Constants
+;; ============================================================================
 (define-constant MARKET_COUNT_KEY u0)
+(define-constant LN2_SCALED u693147) ;; ln(2) * 1e6 for fixed-point math
+(define-constant SCALE_FACTOR u1000000000000) ;; 18 decimal places
 
 ;; SIP-010 Fungible Token Trait
 ;; Defines the standard interface for fungible tokens (USDCx, STX, etc.)
