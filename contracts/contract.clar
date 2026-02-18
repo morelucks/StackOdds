@@ -281,20 +281,29 @@
 ;; Market Functions
 ;; ============================================================================
 
+;; ============================================================================
+;; Private Helper Functions
+;; ============================================================================
+
+;; Retrieves market data or returns error if not found
 (define-private (get-market-or-fail (market-id uint))
   (let ((opt (map-get? markets market-id)))
     (if (is-none opt)
-      (err u2005)
+      ERR_MARKET_NOT_CREATED
       (ok (unwrap! opt (err u0)))
-    )))
+    )
+  )
+)
 
+;; Validates that a market exists and is active for trading
 (define-private (validate-market-active (market-id uint))
   (let ((market (try! (get-market-or-fail market-id))))
     (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
     (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
     (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
     (ok market)
-  ))
+  )
+)
 
 ;; Establishes a new prediction market with specified parameters
 ;; Requires initial liquidity deposit from the creator
