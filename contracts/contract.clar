@@ -103,6 +103,9 @@
 ;; Total supply tracking
 (define-map total-supply-map uint uint)
 
+;; ============================================================================
+;; Data Variables
+;; ============================================================================
 (define-data-var contract-owner principal 'SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB)
 (define-data-var collateral-token principal 'SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB)
 
