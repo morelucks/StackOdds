@@ -71,15 +71,15 @@
 (define-map admin-role principal bool)
 (define-map moderator-role principal bool)
 
-;; Outcome token storage (merged from token.clar)
-(define-map token-id-yes-map
-  uint
-  uint
-)
-(define-map token-id-no-map
-  uint
-  uint
-)
+;; ============================================================================
+;; Outcome Token Data Maps
+;; ============================================================================
+
+;; Token ID mappings
+(define-map token-id-yes-map uint uint)
+(define-map token-id-no-map uint uint)
+
+;; Token metadata
 (define-map token-metadata
   uint
   {
@@ -90,6 +90,8 @@
     outcome: uint,
   }
 )
+
+;; Token balances
 (define-map balances
   {
     owner: principal,
@@ -97,10 +99,9 @@
   }
   uint
 )
-(define-map total-supply-map
-  uint
-  uint
-)
+
+;; Total supply tracking
+(define-map total-supply-map uint uint)
 
 (define-data-var contract-owner principal 'SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB)
 (define-data-var collateral-token principal 'SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB)
