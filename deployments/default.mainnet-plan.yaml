@@ -1,0 +1,22 @@
+---
+id: 1
+name: "Mainnet deployment"
+network: mainnet
+plan:
+  batches:
+    - id: 0
+      transactions:
+        - requirement:
+            contract-publish:
+              contract-name: token
+              expected-sender: <YOUR_MAINNET_ADDRESS>
+              cost: 10000
+              path: contracts/token.clar
+              clarity-version: 2
+        - requirement:
+            contract-publish:
+              contract-name: contract
+              expected-sender: <YOUR_MAINNET_ADDRESS>
+              cost: 50000
+              path: contracts/contract.clar
+              clarity-version: 2
