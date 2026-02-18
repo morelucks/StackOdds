@@ -41,7 +41,11 @@
   ((transfer (uint principal principal (optional (buff 34))) (response bool uint)))
 )
 
-;; Stores all market data including quantities, timing, and resolution status
+;; ============================================================================
+;; Data Maps
+;; ============================================================================
+
+;; Market storage
 (define-map markets
   uint
   {
@@ -60,18 +64,12 @@
   }
 )
 
-(define-map market-count
-  uint
-  uint
-)
-(define-map admin-role
-  principal
-  bool
-)
-(define-map moderator-role
-  principal
-  bool
-)
+;; Market counter
+(define-map market-count uint uint)
+
+;; Access control
+(define-map admin-role principal bool)
+(define-map moderator-role principal bool)
 
 ;; Outcome token storage (merged from token.clar)
 (define-map token-id-yes-map
