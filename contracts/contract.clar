@@ -1,8 +1,14 @@
+;; ============================================================================
+;; StackOdds Prediction Market Contract
+;; ============================================================================
 ;; Implements the Logarithmic Market Scoring Rule (LMSR) for automated liquidity.
 ;; 
 ;; IMPORTANT: When initializing, you MUST pass a contract principal (address.contract-name)
 ;; for the collateral token, not just an address principal.
 
+;; ============================================================================
+;; Error Constants
+;; ============================================================================
 (define-constant ERR_UNAUTHORIZED (err u2001))
 (define-constant ERR_ZERO_LIQUIDITY (err u2002))
 (define-constant ERR_ALREADY_RESOLVED (err u2003))
