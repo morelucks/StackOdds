@@ -219,13 +219,13 @@
   )
 )
 
+;; ============================================================================
+;; Token Minting and Burning (Private)
+;; ============================================================================
+
 ;; Internal function: Creates new shares when users purchase outcome positions
 ;; Called internally from buy-yes and buy-no
-(define-private (mint-token
-    (token-id uint)
-    (recipient principal)
-    (amount uint)
-  )
+(define-private (mint-token (token-id uint) (recipient principal) (amount uint))
   (let ((current-balance (get-user-balance token-id recipient)))
     (set-user-balance token-id recipient (+ current-balance amount))
     (map-set total-supply-map token-id
@@ -237,11 +237,7 @@
 
 ;; Internal function: Destroys shares when users claim winnings
 ;; Called internally from claim
-(define-private (burn-token
-    (token-id uint)
-    (owner principal)
-    (amount uint)
-  )
+(define-private (burn-token (token-id uint) (owner principal) (amount uint))
   (let ((current-balance (get-user-balance token-id owner)))
     (asserts! (>= current-balance amount) ERR_INSUFFICIENT_BALANCE)
     (set-user-balance token-id owner (- current-balance amount))
