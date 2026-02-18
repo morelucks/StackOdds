@@ -1,8 +1,16 @@
+// Contract constants
+
+;; ============================================================================
+;; StackOdds Prediction Market Contract
+;; ============================================================================
 ;; Implements the Logarithmic Market Scoring Rule (LMSR) for automated liquidity.
 ;; 
 ;; IMPORTANT: When initializing, you MUST pass a contract principal (address.contract-name)
 ;; for the collateral token, not just an address principal.
 
+;; ============================================================================
+;; Error Constants
+;; ============================================================================
 (define-constant ERR_UNAUTHORIZED (err u2001))
 (define-constant ERR_ZERO_LIQUIDITY (err u2002))
 (define-constant ERR_ALREADY_RESOLVED (err u2003))
@@ -22,7 +30,16 @@
 (define-constant ERR_MARKET_PAUSED (err u2017))
 (define-constant ERR_INSUFFICIENT_LIQUIDITY (err u2018))
 
+;; ============================================================================
+;; Constants
+;; ============================================================================
+(define-constant MARKET_COUNT_KEY u0)
+(define-constant LN2_SCALED u693147) ;; ln(2) * 1e6 for fixed-point math
+(define-constant SCALE_FACTOR u1000000000000) ;; 18 decimal places
+
+;; ============================================================================
 ;; SIP-010 Fungible Token Trait
+;; ============================================================================
 ;; Defines the standard interface for fungible tokens (USDCx, STX, etc.)
 ;; This trait is used as a parameter type to enable flexible collateral token support.
 ;; NOTE: The static analyzer may show "use of unresolved function 'as-contract'" errors
@@ -33,7 +50,11 @@
   ((transfer (uint principal principal (optional (buff 34))) (response bool uint)))
 )
 
-;; Stores all market data including quantities, timing, and resolution status
+;; ============================================================================
+;; Data Maps
+;; ============================================================================
+
+;; Market storage
 (define-map markets
   uint
   {
@@ -52,28 +73,22 @@
   }
 )
 
-(define-map market-count
-  uint
-  uint
-)
-(define-map admin-role
-  principal
-  bool
-)
-(define-map moderator-role
-  principal
-  bool
-)
+;; Market counter
+(define-map market-count uint uint)
 
-;; Outcome token storage (merged from token.clar)
-(define-map token-id-yes-map
-  uint
-  uint
-)
-(define-map token-id-no-map
-  uint
-  uint
-)
+;; Access control
+(define-map admin-role principal bool)
+(define-map moderator-role principal bool)
+
+;; ============================================================================
+;; Outcome Token Data Maps
+;; ============================================================================
+
+;; Token ID mappings
+(define-map token-id-yes-map uint uint)
+(define-map token-id-no-map uint uint)
+
+;; Token metadata
 (define-map token-metadata
   uint
   {
@@ -84,15 +99,13 @@
     outcome: uint,
   }
 )
+
+;; Token balances
 (define-map balances
   {
     owner: principal,
     token-id: uint,
   }
-  uint
-)
-(define-map total-supply-map
-  uint
   uint
 )
 
@@ -148,9 +161,16 @@
 (define-data-var protocol-fee-collected uint u0)
 (define-data-var emergency-pause bool false)
 
-;; Role checks and configuration
+;; ============================================================================
+;; Access Control Functions
+;; ============================================================================
+
+;; Checks if caller has admin or moderator privileges
 (define-read-only (is-authorized (caller principal))
-  (ok (or (default-to false (map-get? admin-role caller)) (default-to false (map-get? moderator-role caller))))
+  (ok (or 
+    (default-to false (map-get? admin-role caller)) 
+    (default-to false (map-get? moderator-role caller))
+  ))
 )
 
 ;; Security & Compliance Checks
@@ -191,10 +211,8 @@
   )
 )
 
-(define-public (set-moderator-role
-    (who principal)
-    (enabled bool)
-  )
+;; Grants or revokes moderator role (owner only)
+(define-public (set-moderator-role (who principal) (enabled bool))
   (begin
     (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
     (map-set moderator-role who enabled)
@@ -323,10 +341,7 @@
 )
 
 ;; Setup function to configure owner and collateral token address
-(define-public (initialize
-    (owner principal)
-    (collateral principal)
-  )
+(define-public (initialize (owner principal) (collateral principal))
   (begin
     (var-set contract-owner owner)
     (var-set collateral-token collateral)
@@ -340,20 +355,27 @@
 ;; Outcome Token Functions (merged from token.clar)
 ;; ============================================================================
 
+;; ============================================================================
+;; Token Balance Management (Private)
+;; ============================================================================
+
+;; Gets user's token balance
 (define-private (get-user-balance (token-id uint) (user principal))
   (default-to u0 (map-get? balances { owner: user, token-id: token-id }))
 )
 
+;; Sets user's token balance
 (define-private (set-user-balance (token-id uint) (user principal) (amount uint))
   (map-set balances { owner: user, token-id: token-id } amount)
 )
 
+;; ============================================================================
+;; Token Read-Only Functions
+;; ============================================================================
+
 ;; Looks up the token identifier for a given market and outcome type
 ;; Outcome 1 represents YES, outcome 0 represents NO
-(define-read-only (get-token-id
-    (market-id uint)
-    (outcome uint)
-  )
+(define-read-only (get-token-id (market-id uint) (outcome uint))
   (if (is-eq outcome u1)
     (ok (default-to u0 (map-get? token-id-yes-map market-id)))
     (ok (default-to u0 (map-get? token-id-no-map market-id)))
@@ -366,10 +388,7 @@
 )
 
 ;; Checks how many shares of a specific token a user owns
-(define-read-only (get-balance
-    (token-id uint)
-    (owner principal)
-  )
+(define-read-only (get-balance (token-id uint) (owner principal))
   (ok (get-user-balance token-id owner))
 )
 
@@ -378,14 +397,13 @@
   (ok (default-to u0 (map-get? total-supply-map token-id)))
 )
 
+;; ============================================================================
+;; Token Transfer Functions
+;; ============================================================================
+
 ;; Moves shares between user accounts
 ;; Requires sender to authorize the transfer
-(define-public (transfer
-    (token-id uint)
-    (amount uint)
-    (sender principal)
-    (recipient principal)
-  )
+(define-public (transfer (token-id uint) (amount uint) (sender principal) (recipient principal))
   (let (
     (sender-balance (get-user-balance token-id sender))
     (recipient-balance (get-user-balance token-id recipient))
@@ -398,13 +416,13 @@
   )
 )
 
+;; ============================================================================
+;; Token Minting and Burning (Private)
+;; ============================================================================
+
 ;; Internal function: Creates new shares when users purchase outcome positions
 ;; Called internally from buy-yes and buy-no
-(define-private (mint-token
-    (token-id uint)
-    (recipient principal)
-    (amount uint)
-  )
+(define-private (mint-token (token-id uint) (recipient principal) (amount uint))
   (let ((current-balance (get-user-balance token-id recipient)))
     (set-user-balance token-id recipient (+ current-balance amount))
     (map-set total-supply-map token-id
@@ -416,11 +434,7 @@
 
 ;; Internal function: Destroys shares when users claim winnings
 ;; Called internally from claim
-(define-private (burn-token
-    (token-id uint)
-    (owner principal)
-    (amount uint)
-  )
+(define-private (burn-token (token-id uint) (owner principal) (amount uint))
   (let ((current-balance (get-user-balance token-id owner)))
     (asserts! (>= current-balance amount) ERR_INSUFFICIENT_BALANCE)
     (set-user-balance token-id owner (- current-balance amount))
@@ -430,6 +444,10 @@
     (ok true)
   )
 )
+
+;; ============================================================================
+;; Token Initialization (Private)
+;; ============================================================================
 
 ;; Internal function: Registers a new pair of outcome tokens when a market is created
 ;; Called internally from create-market
@@ -460,7 +478,6 @@
       outcome: u0,
     })
     true
-
   )
 )
 
@@ -625,6 +642,30 @@
 ;; Market Functions
 ;; ============================================================================
 
+;; ============================================================================
+;; Private Helper Functions
+;; ============================================================================
+
+;; Retrieves market data or returns error if not found
+(define-private (get-market-or-fail (market-id uint))
+  (let ((opt (map-get? markets market-id)))
+    (if (is-none opt)
+      ERR_MARKET_NOT_CREATED
+      (ok (unwrap! opt (err u0)))
+    )
+  )
+)
+
+;; Validates that a market exists and is active for trading
+(define-private (validate-market-active (market-id uint))
+  (let ((market (try! (get-market-or-fail market-id))))
+    (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
+    (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
+    (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
+    (ok market)
+  )
+)
+
 ;; Establishes a new prediction market with specified parameters
 ;; Requires initial liquidity deposit from the creator
 (define-public (create-market
@@ -643,7 +684,7 @@
       ;; Check maximum market duration
       (asserts! (<= (- end-time start-time) (var-get max-market-duration)) ERR_DURATION_EXCEEDED)
       (let (
-          (current-count (default-to u0 (map-get? market-count u0)))
+          (current-count (default-to u0 (map-get? market-count MARKET_COUNT_KEY)))
           (market-id (+ current-count u1))
           ;; Scale liquidity parameter to 18-decimal internal representation
           (b-internal (* b u1000000000000))
@@ -686,7 +727,7 @@
                 token-id-yes: token-id-yes,
                 token-id-no: token-id-no,
               })
-              (map-set market-count u0 market-id)
+              (map-set market-count MARKET_COUNT_KEY market-id)
               (ok market-id)
             )
           )
@@ -801,36 +842,20 @@
 )
 
 ;; Allows users to redeem their winning shares for collateral
-;; Burns outcome tokens and transfers equivalent collateral amount
-(define-public (claim
-    (market-id uint)
-  )
+(define-public (claim (market-id uint))
   (let (
-      (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
-      (winning-outcome (if (get yes-won market)
-        u1
-        u0
-      ))
-      (token-id (if (get yes-won market)
-        (get token-id-yes market)
-        (get token-id-no market)
-      ))
+      (market (try! (get-market-or-fail market-id)))
+      (token-id (if (get yes-won market) (get token-id-yes market) (get token-id-no market)))
     )
-    (begin
-      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
-      (asserts! (get resolved market) ERR_NOT_RESOLVED)
-      (let ((winning-shares (get-user-balance token-id tx-sender)))
-        (begin
-          (asserts! (> winning-shares u0) ERR_INSUFFICIENT_SHARES)
-          (try! (burn-token token-id tx-sender winning-shares))
-          (let ((claimant tx-sender))
-            (try! (as-contract
-              (contract-call? .token transfer u0 winning-shares tx-sender claimant)
-            ))
-          )
-          (ok winning-shares)
-        )
-      )
+    (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
+    (asserts! (get resolved market) ERR_NOT_RESOLVED)
+    (let ((winning-shares (get-user-balance token-id tx-sender)))
+      (asserts! (> winning-shares u0) ERR_INSUFFICIENT_SHARES)
+      (try! (burn-token token-id tx-sender winning-shares))
+      (try! (as-contract
+        (contract-call? .token transfer u0 winning-shares tx-sender tx-sender)
+      ))
+      (ok winning-shares)
     )
   )
 )
@@ -988,7 +1013,7 @@
 
 ;; Number of markets that have been created so far
 (define-read-only (get-market-count)
-  (ok (default-to u0 (map-get? market-count u0)))
+  (ok (default-to u0 (map-get? market-count MARKET_COUNT_KEY)))
 )
 
 ;; Get LP shares for a provider

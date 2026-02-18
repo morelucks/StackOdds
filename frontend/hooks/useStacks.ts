@@ -72,7 +72,6 @@ export const useStacks = () => {
     try {
       // Check if already connected
       if (typeof window !== 'undefined' && isConnected()) {
-        Broadway
         console.log('Already authenticated');
         const data = getLocalStorage();
         if (data) {
