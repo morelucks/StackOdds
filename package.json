@@ -13,7 +13,8 @@
     "interact-token-50x": "tsx scripts/interact/interact-token-50x.ts",
     "interact-token-12x": "tsx scripts/interact/interact-token-12x.ts",
     "interact-token": "tsx scripts/interact/interact-token.ts",
-    "initialize-contract": "tsx scripts/interact/initialize-contract.ts"
+    "initialize-contract": "tsx scripts/interact/initialize-contract.ts",
+    "mint-tokens": "tsx scripts/interact/mint-tokens.ts"
   },
   "author": "",
   "license": "ISC",

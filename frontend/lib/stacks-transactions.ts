@@ -49,11 +49,9 @@ export const createMarket = async (params: CreateMarketParams) => {
         onCancel
     } = params;
 
-    const postConditions = [
-        Pc.principal(userAddress)
-            .willSendEq(BigInt(liquidity))
-            .ft(`${tokenAddress}.${tokenContractName}`, 'usdcx')
-    ];
+    // NOTE: stackodds-token-v1 does not define a standard fungible token 'usdcx'
+    // It uses a map-based balance system. Standard FT post-conditions will fail.
+    // For this prototype, we use PostConditionMode.Allow.
 
     await openContractCall({
         network: NETWORK,
@@ -67,8 +65,8 @@ export const createMarket = async (params: CreateMarketParams) => {
             stringAsciiCV(question),
             stringAsciiCV(metadataCid)
         ],
-        postConditionMode: PostConditionMode.Deny,
-        postConditions,
+        postConditionMode: PostConditionMode.Allow,
+        postConditions: [],
         onFinish: (data) => {
             console.log('Transaction broadcasted:', data.txId);
             if (onFinish) onFinish(data);
@@ -113,12 +111,7 @@ export const buyOutcome = async (params: BuyParams) => {
 
     const functionName = outcome === 'YES' ? 'buy-yes' : 'buy-no';
 
-    const postConditions = [
-        Pc.principal(userAddress)
-            .willSendEq(BigInt(amount))
-            .ft(`${tokenAddress}.${tokenContractName}`, 'usdcx')
-    ];
-
+    // NOTE: stackodds-token-v1 is not a standard FT, using Allow mode
     await openContractCall({
         network: NETWORK,
         contractAddress,
@@ -128,8 +121,8 @@ export const buyOutcome = async (params: BuyParams) => {
             uintCV(marketId),
             uintCV(amount)
         ],
-        postConditionMode: PostConditionMode.Deny,
-        postConditions,
+        postConditionMode: PostConditionMode.Allow,
+        postConditions: [],
         onFinish: (data) => {
             console.log(`Buy ${outcome} transaction broadcasted:`, data.txId);
             if (onFinish) onFinish(data);
