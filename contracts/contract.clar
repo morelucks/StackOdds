@@ -172,12 +172,13 @@
   (map-set balances { owner: user, token-id: token-id } amount)
 )
 
+;; ============================================================================
+;; Token Read-Only Functions
+;; ============================================================================
+
 ;; Looks up the token identifier for a given market and outcome type
 ;; Outcome 1 represents YES, outcome 0 represents NO
-(define-read-only (get-token-id
-    (market-id uint)
-    (outcome uint)
-  )
+(define-read-only (get-token-id (market-id uint) (outcome uint))
   (if (is-eq outcome u1)
     (ok (default-to u0 (map-get? token-id-yes-map market-id)))
     (ok (default-to u0 (map-get? token-id-no-map market-id)))
@@ -190,10 +191,7 @@
 )
 
 ;; Checks how many shares of a specific token a user owns
-(define-read-only (get-balance
-    (token-id uint)
-    (owner principal)
-  )
+(define-read-only (get-balance (token-id uint) (owner principal))
   (ok (get-user-balance token-id owner))
 )
 
