@@ -109,15 +109,20 @@
 (define-data-var contract-owner principal 'SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB)
 (define-data-var collateral-token principal 'SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB)
 
-;; Role checks and configuration
+;; ============================================================================
+;; Access Control Functions
+;; ============================================================================
+
+;; Checks if caller has admin or moderator privileges
 (define-read-only (is-authorized (caller principal))
-  (ok (or (default-to false (map-get? admin-role caller)) (default-to false (map-get? moderator-role caller))))
+  (ok (or 
+    (default-to false (map-get? admin-role caller)) 
+    (default-to false (map-get? moderator-role caller))
+  ))
 )
 
-(define-public (set-admin-role
-    (who principal)
-    (enabled bool)
-  )
+;; Grants or revokes admin role (owner only)
+(define-public (set-admin-role (who principal) (enabled bool))
   (begin
     (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
     (map-set admin-role who enabled)
@@ -125,10 +130,8 @@
   )
 )
 
-(define-public (set-moderator-role
-    (who principal)
-    (enabled bool)
-  )
+;; Grants or revokes moderator role (owner only)
+(define-public (set-moderator-role (who principal) (enabled bool))
   (begin
     (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
     (map-set moderator-role who enabled)
