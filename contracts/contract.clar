@@ -158,10 +158,16 @@
 ;; Outcome Token Functions (merged from token.clar)
 ;; ============================================================================
 
+;; ============================================================================
+;; Token Balance Management (Private)
+;; ============================================================================
+
+;; Gets user's token balance
 (define-private (get-user-balance (token-id uint) (user principal))
   (default-to u0 (map-get? balances { owner: user, token-id: token-id }))
 )
 
+;; Sets user's token balance
 (define-private (set-user-balance (token-id uint) (user principal) (amount uint))
   (map-set balances { owner: user, token-id: token-id } amount)
 )
