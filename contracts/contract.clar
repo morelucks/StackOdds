@@ -248,6 +248,10 @@
   )
 )
 
+;; ============================================================================
+;; Token Initialization (Private)
+;; ============================================================================
+
 ;; Internal function: Registers a new pair of outcome tokens when a market is created
 ;; Called internally from create-market
 (define-private (initialize-token
