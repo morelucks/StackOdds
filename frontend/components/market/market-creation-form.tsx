@@ -113,19 +113,9 @@ export function MarketCreationForm() {
     async function onSubmit(values: z.infer<typeof formSchema>) {
         console.log("Submitting form...", values);
 
-        if (!isStacksConnected) {
-            toast.info("Please connect your Bitcoin wallet first")
+        if (!isStacksConnected || !walletAddress) {
+            toast.info("Please connect your wallet first")
             return
-        }
-
-        if (!walletAddress) {
-            toast.error("Wallet address not available. Please reconnect your wallet.")
-            return
-        }
-
-        if (!isAllowanceSufficient && false) { // Skip approval for now as Stacks doesn't standardly use it this way
-            handleApprove();
-            return;
         }
 
         try {
