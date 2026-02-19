@@ -75,7 +75,6 @@ const formSchema = z.object({
 
 export function MarketCreationForm() {
     const router = useRouter()
-    // TODO: Update to use Stacks wallet instead of EVM
     const { isConnected: isStacksConnected, userData } = useStacks()
     const walletAddress = userData ? getStacksAddress(userData) : null
 
