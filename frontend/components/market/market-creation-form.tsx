@@ -457,21 +457,9 @@ export function MarketCreationForm() {
                 </div>
 
                 <div className="pt-4">
-                    {isAllowanceSufficient ? (
-                        <Button type="submit" disabled={isCreatePending} className="w-full text-base font-semibold h-12">
-                            {isCreatePending ? (createStep || "Processing...") : "Create Market"}
-                        </Button>
-                    ) : (
-                        <Button
-                            type="button"
-                            onClick={handleApprove}
-                            disabled={isApprovePending}
-                            className="w-full font-semibold h-12 bg-emerald-600 text-white hover:bg-emerald-700"
-                            variant="default"
-                        >
-                            {isApprovePending ? "Processing Approval..." : "Approve USDCx"}
-                        </Button>
-                    )}
+                    <Button type="submit" disabled={isCreatePending} className="w-full text-base font-semibold h-12">
+                        {isCreatePending ? (createStep || "Processing...") : "Create Market"}
+                    </Button>
                 </div>
 
                 {createHash && <div className="p-3 rounded bg-green-500/10 border border-green-500/20 text-xs text-green-400 break-all">Create Tx: {createHash}</div>}
