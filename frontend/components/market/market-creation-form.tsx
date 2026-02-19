@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { CONTRACT_ADDRESS } from "@/lib/constants"
-// TODO: Implement Stacks contract interactions
 import { Button } from "@/components/ui/button"
 import {
     Form,
