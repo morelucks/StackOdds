@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { CONTRACT_ADDRESS } from "@/lib/constants"
-// TODO: Implement Stacks contract interactions
 import { Button } from "@/components/ui/button"
 import {
     Form,
@@ -75,13 +74,9 @@ const formSchema = z.object({
 
 export function MarketCreationForm() {
     const router = useRouter()
-    // TODO: Update to use Stacks wallet instead of EVM
-    const { isConnected: isStacksConnected, userData } = useStacks()
+    const { isConnected: isStacksConnected, userData, connectWallet } = useStacks()
     const walletAddress = userData ? getStacksAddress(userData) : null
 
-
-    const [approveHash, setApproveHash] = useState<string | null>(null)
-    const [isApprovePending, setIsApprovePending] = useState(false)
     const [createHash, setCreateHash] = useState<string | null>(null)
     const [isCreatePending, setIsCreatePending] = useState(false)
     const [createStep, setCreateStep] = useState<string>("")
@@ -99,10 +94,8 @@ export function MarketCreationForm() {
         },
     })
 
-    const liquidity = form.watch("liquidity")
     const imageFile = form.watch("image")
     const [imagePreview, setImagePreview] = useState<string | null>(null)
-
 
     useEffect(() => {
         if (imageFile instanceof File) {
@@ -116,69 +109,13 @@ export function MarketCreationForm() {
         }
     }, [imageFile])
 
-    // TODO: Replace with Stacks contract read
-    // For now, setting allowance to 0 - needs Stacks implementation
-    const allowance = BigInt(0)
-    const refetchAllowance = () => { }
-
-
-    useEffect(() => {
-        if (approveHash && !isApprovePending) {
-
-            setTimeout(() => {
-                refetchAllowance()
-            }, 2000)
-        }
-    }, [approveHash, isApprovePending, refetchAllowance])
-
-    // TODO: Check token allowance using Stacks contract read
-    const isAllowanceSufficient = false // Placeholder - needs Stacks implementation
-
-    async function handleApprove() {
-        if (!isStacksConnected) {
-            toast.info("Please connect your Bitcoin wallet first")
-            return
-        }
-
-        if (!walletAddress) {
-            toast.error("Wallet not available. Please reconnect your wallet.")
-            return
-        }
-
-        try {
-            setIsApprovePending(true)
-
-            // Encode the approve function call
-            // TODO: Implement Stacks token approval
-            // Use @stacks/transactions makeContractCall for token approval
-            toast.error("Stacks token approval not yet implemented.")
-            return
-
-            setApproveHash(hash)
-            toast.success("Approval transaction sent!")
-            setIsApprovePending(false)
-        } catch (error) {
-            setIsApprovePending(false)
-            toast.error(`Failed to approve USDCx: ${(error as any)?.message || "Unknown error"}`)
-        }
-    }
-
     async function onSubmit(values: z.infer<typeof formSchema>) {
         console.log("Submitting form...", values);
 
-        if (!isStacksConnected) {
-            toast.info("Please connect your Bitcoin wallet first")
+        if (!isStacksConnected || !walletAddress) {
+            toast.info("Please connect your wallet first")
+            connectWallet()
             return
-        }
-
-        if (!walletAddress) {
-            toast.error("Wallet address not available. Please reconnect your wallet.")
-            return
-        }
-
-        if (!isAllowanceSufficient && false) { // Skip approval for now as Stacks doesn't standardly use it this way
-            handleApprove();
-            return;
         }
 
         try {
@@ -519,25 +456,20 @@ export function MarketCreationForm() {
                 </div>
 
                 <div className="pt-4">
-                    {isAllowanceSufficient ? (
-                        <Button type="submit" disabled={isCreatePending} className="w-full text-base font-semibold h-12">
-                            {isCreatePending ? (createStep || "Processing...") : "Create Market"}
-                        </Button>
-                    ) : (
-                        <Button
-                            type="button"
-                            onClick={handleApprove}
-                            disabled={isApprovePending}
-                            className="w-full font-semibold h-12 bg-emerald-600 text-white hover:bg-emerald-700"
-                            variant="default"
-                        >
-                            {isApprovePending ? "Processing Approval..." : "Approve USDCx"}
-                        </Button>
-                    )}
+                    <Button 
+                        type="submit" 
+                        disabled={isCreatePending || !isStacksConnected} 
+                        className="w-full text-base font-semibold h-12"
+                    >
+                        {!isStacksConnected 
+                            ? "Connect Wallet to Create Market" 
+                            : isCreatePending 
+                            ? (createStep || "Processing...") 
+                            : "Create Market"}
+                    </Button>
                 </div>
 
                 {createHash && <div className="p-3 rounded bg-green-500/10 border border-green-500/20 text-xs text-green-400 break-all">Create Tx: {createHash}</div>}
-                {approveHash && <div className="p-3 rounded bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400 break-all">Approve Tx: {approveHash}</div>}
                 {createHash && !isCreatePending && <div className="text-center text-green-500 font-bold text-lg">Market Creation Transaction Sent!</div>}
             </form>
         </Form>
