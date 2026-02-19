@@ -459,7 +459,7 @@ export function MarketCreationForm() {
                 <div className="pt-4">
                     <Button 
                         type="submit" 
-                        disabled={isCreatePending} 
+                        disabled={isCreatePending || !isStacksConnected} 
                         className="w-full text-base font-semibold h-12"
                     >
                         {isCreatePending ? (createStep || "Processing...") : "Create Market"}
