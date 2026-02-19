@@ -462,7 +462,11 @@ export function MarketCreationForm() {
                         disabled={isCreatePending || !isStacksConnected} 
                         className="w-full text-base font-semibold h-12"
                     >
-                        {isCreatePending ? (createStep || "Processing...") : "Create Market"}
+                        {!isStacksConnected 
+                            ? "Connect Wallet to Create Market" 
+                            : isCreatePending 
+                            ? (createStep || "Processing...") 
+                            : "Create Market"}
                     </Button>
                 </div>
 
