@@ -115,6 +115,7 @@ export function MarketCreationForm() {
 
         if (!isStacksConnected || !walletAddress) {
             toast.info("Please connect your wallet first")
+            connectWallet()
             return
         }
 
