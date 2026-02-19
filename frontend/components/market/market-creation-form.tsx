@@ -110,53 +110,6 @@ export function MarketCreationForm() {
         }
     }, [imageFile])
 
-    // TODO: Replace with Stacks contract read
-    // For now, setting allowance to 0 - needs Stacks implementation
-    const allowance = BigInt(0)
-    const refetchAllowance = () => { }
-
-
-    useEffect(() => {
-        if (approveHash && !isApprovePending) {
-
-            setTimeout(() => {
-                refetchAllowance()
-            }, 2000)
-        }
-    }, [approveHash, isApprovePending, refetchAllowance])
-
-    // TODO: Check token allowance using Stacks contract read
-    const isAllowanceSufficient = false // Placeholder - needs Stacks implementation
-
-    async function handleApprove() {
-        if (!isStacksConnected) {
-            toast.info("Please connect your Bitcoin wallet first")
-            return
-        }
-
-        if (!walletAddress) {
-            toast.error("Wallet not available. Please reconnect your wallet.")
-            return
-        }
-
-        try {
-            setIsApprovePending(true)
-
-            // Encode the approve function call
-            // TODO: Implement Stacks token approval
-            // Use @stacks/transactions makeContractCall for token approval
-            toast.error("Stacks token approval not yet implemented.")
-            return
-
-            setApproveHash(hash)
-            toast.success("Approval transaction sent!")
-            setIsApprovePending(false)
-        } catch (error) {
-            setIsApprovePending(false)
-            toast.error(`Failed to approve USDCx: ${(error as any)?.message || "Unknown error"}`)
-        }
-    }
-
     async function onSubmit(values: z.infer<typeof formSchema>) {
         console.log("Submitting form...", values);
 
