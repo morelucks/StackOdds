@@ -75,7 +75,7 @@ const formSchema = z.object({
 
 export function MarketCreationForm() {
     const router = useRouter()
-    const { isConnected: isStacksConnected, userData } = useStacks()
+    const { isConnected: isStacksConnected, userData, connectWallet } = useStacks()
     const walletAddress = userData ? getStacksAddress(userData) : null
 
 
