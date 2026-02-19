@@ -78,9 +78,6 @@ export function MarketCreationForm() {
     const { isConnected: isStacksConnected, userData, connectWallet } = useStacks()
     const walletAddress = userData ? getStacksAddress(userData) : null
 
-
-    const [approveHash, setApproveHash] = useState<string | null>(null)
-    const [isApprovePending, setIsApprovePending] = useState(false)
     const [createHash, setCreateHash] = useState<string | null>(null)
     const [isCreatePending, setIsCreatePending] = useState(false)
     const [createStep, setCreateStep] = useState<string>("")
