@@ -471,7 +471,6 @@ export function MarketCreationForm() {
                 </div>
 
                 {createHash && <div className="p-3 rounded bg-green-500/10 border border-green-500/20 text-xs text-green-400 break-all">Create Tx: {createHash}</div>}
-                {approveHash && <div className="p-3 rounded bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400 break-all">Approve Tx: {approveHash}</div>}
                 {createHash && !isCreatePending && <div className="text-center text-green-500 font-bold text-lg">Market Creation Transaction Sent!</div>}
             </form>
         </Form>
