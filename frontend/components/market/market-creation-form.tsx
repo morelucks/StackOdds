@@ -95,10 +95,8 @@ export function MarketCreationForm() {
         },
     })
 
-    const liquidity = form.watch("liquidity")
     const imageFile = form.watch("image")
     const [imagePreview, setImagePreview] = useState<string | null>(null)
-
 
     useEffect(() => {
         if (imageFile instanceof File) {
