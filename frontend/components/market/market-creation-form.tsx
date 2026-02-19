@@ -457,7 +457,11 @@ export function MarketCreationForm() {
                 </div>
 
                 <div className="pt-4">
-                    <Button type="submit" disabled={isCreatePending} className="w-full text-base font-semibold h-12">
+                    <Button 
+                        type="submit" 
+                        disabled={isCreatePending} 
+                        className="w-full text-base font-semibold h-12"
+                    >
                         {isCreatePending ? (createStep || "Processing...") : "Create Market"}
                     </Button>
                 </div>
