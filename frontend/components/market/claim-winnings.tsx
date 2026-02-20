@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { CONTRACT_ADDRESS } from "@/lib/constants"
 import { useStacks } from "@/hooks/useStacks"
+import { claimWinnings } from "@/lib/stacks-transactions"
 // TODO: Implement Stacks contract interactions
 import { Loader2, Trophy } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -29,14 +30,19 @@ export function ClaimWinnings({ marketId, resolved, yesWon }: ClaimWinningsProps
     const handleClaim = async () => {
         setIsPending(true)
         try {
-            // TODO: Implement Stacks contract call using @stacks/transactions
-            // Use makeContractCall for claim function
-            toast.error("Stacks transactions not yet implemented.")
-            setIsPending(false)
-            return
-            // const txHash = await sendStacksTransaction(...)
-            // setHash(txHash)
-            // setIsSuccess(true)
+            const [contractAddress, contractName] = CONTRACT_ADDRESS.split('.')
+            await claimWinnings({
+                contractAddress,
+                contractName,
+                marketId: parseInt(marketId),
+                onFinish: (data: any) => {
+                    setHash(data.txId)
+                    setIsSuccess(true)
+                },
+                onCancel: () => {
+                    setIsPending(false)
+                }
+            })
         } catch (error) {
             setIsPending(false)
             toast.error(`Failed to claim winnings: ${(error as any)?.message || "Unknown error"}`)

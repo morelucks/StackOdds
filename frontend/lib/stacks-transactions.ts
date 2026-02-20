@@ -7,10 +7,12 @@ import {
     uintCV,
     boolCV,
     stringAsciiCV,
+    contractPrincipalCV,
     PostConditionMode,
     Pc
 } from '@stacks/transactions';
 import { STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
+import { toMicroUnits, getUSDCxAddress, TOKEN_CONTRACT_ADDRESS } from './constants';
 
 const NETWORK = process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet' ? STACKS_MAINNET : STACKS_TESTNET;
 
@@ -49,9 +51,8 @@ export const createMarket = async (params: CreateMarketParams) => {
         onCancel
     } = params;
 
-    // NOTE: stackodds-token-v1 does not define a standard fungible token 'usdcx'
-    // It uses a map-based balance system. Standard FT post-conditions will fail.
-    // For this prototype, we use PostConditionMode.Allow.
+    const liquidityMicro = toMicroUnits(liquidity);
+    const [tokenAddr, tokenName] = `${tokenAddress}.${tokenContractName}`.split('.');
 
     await openContractCall({
         network: NETWORK,
@@ -59,11 +60,13 @@ export const createMarket = async (params: CreateMarketParams) => {
         contractName,
         functionName: 'create-market',
         functionArgs: [
-            uintCV(liquidity),
+            uintCV(liquidityMicro),
             uintCV(startTime),
             uintCV(endTime),
             stringAsciiCV(question),
-            stringAsciiCV(metadataCid)
+            stringAsciiCV(metadataCid),
+            contractPrincipalCV(getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[0], getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[1]),
+            contractPrincipalCV(TOKEN_CONTRACT_ADDRESS.split('.')[0], TOKEN_CONTRACT_ADDRESS.split('.')[1])
         ],
         postConditionMode: PostConditionMode.Allow,
         postConditions: [],
@@ -110,8 +113,8 @@ export const buyOutcome = async (params: BuyParams) => {
     } = params;
 
     const functionName = outcome === 'YES' ? 'buy-yes' : 'buy-no';
+    const amountMicro = toMicroUnits(amount);
 
-    // NOTE: stackodds-token-v1 is not a standard FT, using Allow mode
     await openContractCall({
         network: NETWORK,
         contractAddress,
@@ -119,7 +122,9 @@ export const buyOutcome = async (params: BuyParams) => {
         functionName,
         functionArgs: [
             uintCV(marketId),
-            uintCV(amount)
+            uintCV(amountMicro),
+            contractPrincipalCV(getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[0], getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[1]),
+            contractPrincipalCV(TOKEN_CONTRACT_ADDRESS.split('.')[0], TOKEN_CONTRACT_ADDRESS.split('.')[1])
         ],
         postConditionMode: PostConditionMode.Allow,
         postConditions: [],
@@ -206,7 +211,9 @@ export const claimWinnings = async (params: ClaimParams) => {
         contractName,
         functionName: 'claim',
         functionArgs: [
-            uintCV(marketId)
+            uintCV(marketId),
+            contractPrincipalCV(getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[0], getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[1]),
+            contractPrincipalCV(TOKEN_CONTRACT_ADDRESS.split('.')[0], TOKEN_CONTRACT_ADDRESS.split('.')[1])
         ],
         postConditionMode: PostConditionMode.Deny,
         postConditions: [],
