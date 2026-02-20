@@ -93,7 +93,7 @@ export function TradingForm({ marketId, outcome, probability, isExpired = false 
                 contractAddress: marketContractAddress,
                 contractName: marketContractName,
                 marketId: parseInt(marketId),
-                amount: Number(amountBI),
+                amount: parseFloat(amount),
                 outcome,
                 tokenAddress,
                 tokenContractName,

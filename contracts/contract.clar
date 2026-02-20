@@ -1,16 +1,6 @@
-// Contract constants
+;; Prediction market using LMSR pricing mechanism
+;; Allows users to trade shares on binary outcomes with automatic price discovery
 
-;; ============================================================================
-;; StackOdds Prediction Market Contract
-;; ============================================================================
-;; Implements the Logarithmic Market Scoring Rule (LMSR) for automated liquidity.
-;; 
-;; IMPORTANT: When initializing, you MUST pass a contract principal (address.contract-name)
-;; for the collateral token, not just an address principal.
-
-;; ============================================================================
-;; Error Constants
-;; ============================================================================
 (define-constant ERR_UNAUTHORIZED (err u2001))
 (define-constant ERR_ZERO_LIQUIDITY (err u2002))
 (define-constant ERR_ALREADY_RESOLVED (err u2003))
@@ -22,1029 +12,408 @@
 (define-constant ERR_MARKET_EXPIRED (err u2009))
 (define-constant ERR_MARKET_NOT_EXPIRED (err u2010))
 (define-constant ERR_INSUFFICIENT_BALANCE (err u2011))
-(define-constant ERR_BLACKLISTED (err u2012))
-(define-constant ERR_NOT_WHITELISTED (err u2013))
-(define-constant ERR_GEO_RESTRICTED (err u2014))
-(define-constant ERR_DURATION_EXCEEDED (err u2015))
-(define-constant ERR_RESOLUTION_TOO_EARLY (err u2016))
-(define-constant ERR_MARKET_PAUSED (err u2017))
-(define-constant ERR_INSUFFICIENT_LIQUIDITY (err u2018))
 
-;; ============================================================================
-;; Constants
-;; ============================================================================
-(define-constant MARKET_COUNT_KEY u0)
-(define-constant LN2_SCALED u693147) ;; ln(2) * 1e6 for fixed-point math
-(define-constant SCALE_FACTOR u1000000000000) ;; 18 decimal places
-
-;; ============================================================================
-;; SIP-010 Fungible Token Trait
-;; ============================================================================
-;; Defines the standard interface for fungible tokens (USDCx, STX, etc.)
-;; This trait is used as a parameter type to enable flexible collateral token support.
-;; NOTE: The static analyzer may show "use of unresolved function 'as-contract'" errors
-;; when using trait parameters with contract-call?. This is a known static analyzer
-;; limitation - the code works correctly at runtime, but the analyzer cannot verify
-;; dynamic contract calls and some built-in functions when used with trait parameters.
-(define-trait sip010-trait
-  ((transfer (uint principal principal (optional (buff 34))) (response bool uint)))
+;; Traits
+(define-trait sip-010-trait
+  (
+    (transfer (uint principal principal (optional (buff 34))) (response bool uint))
+    (get-name () (response (string-ascii 32) uint))
+    (get-symbol () (response (string-ascii 10) uint))
+    (get-decimals () (response uint uint))
+    (get-balance (principal) (response uint uint))
+    (get-total-supply () (response uint uint))
+    (get-token-uri () (response (optional (string-utf8 256)) uint))
+  )
 )
 
-;; ============================================================================
-;; Data Maps
-;; ============================================================================
-
-;; Market storage
-(define-map markets
-  uint
-  {
-    exists: bool,
-    b: uint,
-    q-yes: uint,
-    q-no: uint,
-    start-time: uint,
-    end-time: uint,
-    resolved: bool,
-    yes-won: bool,
-    question: (string-ascii 256),
-    c-id: (string-ascii 64),
-    token-id-yes: uint,
-    token-id-no: uint,
-  }
+(define-trait outcome-trait
+  (
+    (initialize-token (uint uint uint (string-ascii 32) (string-ascii 32) (string-ascii 10) (string-ascii 10)) (response bool uint))
+    (mint (uint principal uint) (response bool uint))
+    (burn (uint principal uint) (response bool uint))
+    (get-balance (uint principal) (response uint uint))
+  )
 )
 
-;; Market counter
+;; Precision constants for decimal handling
+;; PRECISION represents 1.0 in fixed-point math (6 decimals)
+;; PRECISION_18 is used for internal calculations (18 decimals)
+(define-constant PRECISION u1000000)
+(define-constant PRECISION_18 u1000000000000000000)
+
+;; Stores all market data including quantities, timing, and resolution status
+(define-map markets uint
+    {
+        exists: bool,
+        b: uint,
+        q-yes: uint,
+        q-no: uint,
+        start-time: uint,
+        end-time: uint,
+        resolved: bool,
+        yes-won: bool,
+        question: (string-ascii 256),
+        c-id: (string-ascii 64),
+        token-id-yes: uint,
+        token-id-no: uint
+    }
+)
+
 (define-map market-count uint uint)
-
-;; Access control
 (define-map admin-role principal bool)
 (define-map moderator-role principal bool)
 
-;; ============================================================================
-;; Outcome Token Data Maps
-;; ============================================================================
-
-;; Token ID mappings
-(define-map token-id-yes-map uint uint)
-(define-map token-id-no-map uint uint)
-
-;; Token metadata
-(define-map token-metadata
-  uint
-  {
-    name: (string-ascii 32),
-    symbol: (string-ascii 10),
-    decimals: uint,
-    market-id: uint,
-    outcome: uint,
-  }
-)
-
-;; Token balances
-(define-map balances
-  {
-    owner: principal,
-    token-id: uint,
-  }
-  uint
-)
-
-;; Security & Compliance Maps
-(define-map blacklist
-  principal
-  bool
-)
-(define-map whitelist
-  principal
-  bool
-)
-(define-map kyc-verified
-  principal
-  bool
-)
-(define-map geo-restricted
-  (string-ascii 2)
-  bool
-)
-
-;; Market pause state
-(define-map market-paused
-  uint
-  bool
-)
-
-;; Liquidity provider shares
-(define-map lp-shares
-  { market-id: uint, provider: principal }
-  uint
-)
-
-;; Total LP shares per market
-(define-map total-lp-shares
-  uint
-  uint
-)
-
-;; Market fee earnings for LP distribution
-(define-map market-fee-pool
-  uint
-  uint
-)
-
 (define-data-var contract-owner principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
 (define-data-var collateral-token principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
-(define-data-var whitelist-enabled bool false)
-(define-data-var kyc-required bool false)
-(define-data-var max-market-duration uint u52560) ;; ~1 year in blocks
-(define-data-var min-resolution-delay uint u144) ;; ~1 day in blocks
-(define-data-var trading-fee-rate uint u10000) ;; 1% = 10000 (basis points, scaled by 1e6)
-(define-data-var protocol-fee-collected uint u0)
-(define-data-var emergency-pause bool false)
+(define-data-var outcome-token-contract principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
 
-;; ============================================================================
-;; Access Control Functions
-;; ============================================================================
+;; Setup function to configure owner, collateral token, and outcome token contract addresses
+(define-public (initialize (owner principal) (collateral principal) (outcome-token principal))
+    (begin
+        (var-set contract-owner owner)
+        (var-set collateral-token collateral)
+        (var-set outcome-token-contract outcome-token)
+        (map-set admin-role owner true)
+        (map-set moderator-role owner true)
+        (ok true)
+    )
+)
 
-;; Checks if caller has admin or moderator privileges
+;; Role-based permission checking and management
 (define-read-only (is-authorized (caller principal))
-  (ok (or 
-    (default-to false (map-get? admin-role caller)) 
-    (default-to false (map-get? moderator-role caller))
-  ))
+    (ok (or (default-to false (map-get? admin-role caller)) (default-to false (map-get? moderator-role caller))))
 )
 
-;; Security & Compliance Checks
-;; Validates user compliance with blacklist, whitelist, KYC, and geographic restrictions
-;; Returns ok(true) if compliant, otherwise returns appropriate error
-(define-private (check-user-compliance (user principal) (country-code (string-ascii 2)))
-  (begin
-    ;; Check blacklist
-    (asserts! (not (default-to false (map-get? blacklist user))) ERR_BLACKLISTED)
-    ;; Check whitelist if enabled
-    (asserts! (or (not (var-get whitelist-enabled)) 
-                  (default-to false (map-get? whitelist user))) 
-              ERR_NOT_WHITELISTED)
-    ;; Check KYC if required
-    (asserts! (or (not (var-get kyc-required))
-                  (default-to false (map-get? kyc-verified user)))
-              ERR_NOT_WHITELISTED)
-    ;; Check geographic restrictions
-    (asserts! (not (default-to false (map-get? geo-restricted country-code))) 
-              ERR_GEO_RESTRICTED)
-    (ok true)
-  )
-)
-
-;; Public read-only function to check if a user meets compliance requirements
-(define-read-only (is-user-compliant (user principal) (country-code (string-ascii 2)))
-  (check-user-compliance user country-code)
-)
-
-(define-public (set-admin-role
-    (who principal)
-    (enabled bool)
-  )
-  (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-    (map-set admin-role who enabled)
-    (ok true)
-  )
-)
-
-;; Grants or revokes moderator role (owner only)
-(define-public (set-moderator-role (who principal) (enabled bool))
-  (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-    (map-set moderator-role who enabled)
-    (ok true)
-  )
-)
-
-;; Security & Compliance Management Functions
-;; Owner-only functions to manage compliance settings
-
-;; Add or remove a user from the blacklist
-(define-public (set-blacklist
-    (user principal)
-    (blacklisted bool)
-  )
-  (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-    (map-set blacklist user blacklisted)
-    (ok true)
-  )
-)
-
-(define-public (set-whitelist
-    (user principal)
-    (whitelisted bool)
-  )
-  (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-    (map-set whitelist user whitelisted)
-    (ok true)
-  )
-)
-
-(define-public (set-kyc-verified
-    (user principal)
-    (verified bool)
-  )
-  (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-    (map-set kyc-verified user verified)
-    (ok true)
-  )
-)
-
-(define-public (set-geo-restriction
-    (country-code (string-ascii 2))
-    (restricted bool)
-  )
-  (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-    (map-set geo-restricted country-code restricted)
-    (ok true)
-  )
-)
-
-(define-public (set-whitelist-enabled (enabled bool))
-  (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-    (var-set whitelist-enabled enabled)
-    (ok true)
-  )
-)
-
-(define-public (set-kyc-required (required bool))
-  (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-    (var-set kyc-required required)
-    (ok true)
-  )
-)
-
-(define-public (set-max-market-duration (duration uint))
-  (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-    (var-set max-market-duration duration)
-    (ok true)
-  )
-)
-
-(define-public (set-min-resolution-delay (delay uint))
-  (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-    (var-set min-resolution-delay delay)
-    (ok true)
-  )
-)
-
-;; Fee and pause management
-;; Owner-only functions to configure trading fees and pause markets
-
-;; Set the trading fee rate (in basis points, scaled by 1e6)
-;; Example: 10000 = 1%, 5000 = 0.5%
-(define-public (set-trading-fee-rate (rate uint))
-  (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-    (var-set trading-fee-rate rate)
-    (ok true)
-  )
-)
-
-;; Pause or unpause all trading globally
-;; Emergency function to halt all market activity
-(define-public (set-emergency-pause (paused bool))
-  (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-    (var-set emergency-pause paused)
-    (ok true)
-  )
-)
-
-(define-public (set-market-pause (market-id uint) (paused bool))
-  (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-    (map-set market-paused market-id paused)
-    (ok true)
-  )
-)
-
-(define-public (withdraw-protocol-fees (amount uint))
-  (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-    (asserts! (<= amount (var-get protocol-fee-collected)) ERR_INSUFFICIENT_BALANCE)
-    (var-set protocol-fee-collected (- (var-get protocol-fee-collected) amount))
-    (as-contract (contract-call? .token transfer u0 amount tx-sender (var-get contract-owner)))
-  )
-)
-
-;; Setup function to configure owner and collateral token address
-(define-public (initialize (owner principal) (collateral principal))
-  (begin
-    (var-set contract-owner owner)
-    (var-set collateral-token collateral)
-    (map-set admin-role owner true)
-    (map-set moderator-role owner true)
-    (ok true)
-  )
-)
-
-;; ============================================================================
-;; Outcome Token Functions (merged from token.clar)
-;; ============================================================================
-
-;; ============================================================================
-;; Token Balance Management (Private)
-;; ============================================================================
-
-;; Gets user's token balance
-(define-private (get-user-balance (token-id uint) (user principal))
-  (default-to u0 (map-get? balances { owner: user, token-id: token-id }))
-)
-
-;; Sets user's token balance
-(define-private (set-user-balance (token-id uint) (user principal) (amount uint))
-  (map-set balances { owner: user, token-id: token-id } amount)
-)
-
-;; ============================================================================
-;; Token Read-Only Functions
-;; ============================================================================
-
-;; Looks up the token identifier for a given market and outcome type
-;; Outcome 1 represents YES, outcome 0 represents NO
-(define-read-only (get-token-id (market-id uint) (outcome uint))
-  (if (is-eq outcome u1)
-    (ok (default-to u0 (map-get? token-id-yes-map market-id)))
-    (ok (default-to u0 (map-get? token-id-no-map market-id)))
-  )
-)
-
-;; Returns stored information about a specific token type
-(define-read-only (get-token-metadata (token-id uint))
-  (ok (map-get? token-metadata token-id))
-)
-
-;; Checks how many shares of a specific token a user owns
-(define-read-only (get-balance (token-id uint) (owner principal))
-  (ok (get-user-balance token-id owner))
-)
-
-;; Returns the total number of shares minted for a token type
-(define-read-only (get-total-supply (token-id uint))
-  (ok (default-to u0 (map-get? total-supply-map token-id)))
-)
-
-;; ============================================================================
-;; Token Transfer Functions
-;; ============================================================================
-
-;; Moves shares between user accounts
-;; Requires sender to authorize the transfer
-(define-public (transfer (token-id uint) (amount uint) (sender principal) (recipient principal))
-  (let (
-    (sender-balance (get-user-balance token-id sender))
-    (recipient-balance (get-user-balance token-id recipient))
-  )
-    (asserts! (is-eq tx-sender sender) ERR_UNAUTHORIZED)
-    (asserts! (>= sender-balance amount) ERR_INSUFFICIENT_BALANCE)
-    (set-user-balance token-id sender (- sender-balance amount))
-    (set-user-balance token-id recipient (+ recipient-balance amount))
-    (ok true)
-  )
-)
-
-;; ============================================================================
-;; Token Minting and Burning (Private)
-;; ============================================================================
-
-;; Internal function: Creates new shares when users purchase outcome positions
-;; Called internally from buy-yes and buy-no
-(define-private (mint-token (token-id uint) (recipient principal) (amount uint))
-  (let ((current-balance (get-user-balance token-id recipient)))
-    (set-user-balance token-id recipient (+ current-balance amount))
-    (map-set total-supply-map token-id
-      (+ (default-to u0 (map-get? total-supply-map token-id)) amount)
+(define-public (set-admin-role (principal principal) (enabled bool))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+        (map-set admin-role principal enabled)
+        (ok true)
     )
-    true
-  )
 )
 
-;; Internal function: Destroys shares when users claim winnings
-;; Called internally from claim
-(define-private (burn-token (token-id uint) (owner principal) (amount uint))
-  (let ((current-balance (get-user-balance token-id owner)))
-    (asserts! (>= current-balance amount) ERR_INSUFFICIENT_BALANCE)
-    (set-user-balance token-id owner (- current-balance amount))
-    (map-set total-supply-map token-id
-      (- (default-to u0 (map-get? total-supply-map token-id)) amount)
+(define-public (set-moderator-role (principal principal) (enabled bool))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+        (map-set moderator-role principal enabled)
+        (ok true)
     )
-    (ok true)
-  )
 )
 
-;; ============================================================================
-;; Token Initialization (Private)
-;; ============================================================================
-
-;; Internal function: Registers a new pair of outcome tokens when a market is created
-;; Called internally from create-market
-(define-private (initialize-token
-    (market-id uint)
-    (token-id-yes uint)
-    (token-id-no uint)
-    (name-yes (string-ascii 32))
-    (name-no (string-ascii 32))
-    (symbol-yes (string-ascii 10))
-    (symbol-no (string-ascii 10))
-  )
-  (begin
-    (map-set token-id-yes-map market-id token-id-yes)
-    (map-set token-id-no-map market-id token-id-no)
-    (map-set token-metadata token-id-yes {
-      name: name-yes,
-      symbol: symbol-yes,
-      decimals: u6,
-      market-id: market-id,
-      outcome: u1,
-    })
-    (map-set token-metadata token-id-no {
-      name: name-no,
-      symbol: symbol-no,
-      decimals: u6,
-      market-id: market-id,
-      outcome: u0,
-    })
-    true
-  )
-)
-
-;; ============================================================================
-;; LMSR Math Helper Functions
-;; ============================================================================
-
-;; Approximates e^x using Taylor series expansion
-;; Input: x in fixed-point (scaled by 1e6)
-;; Output: e^x in fixed-point (scaled by 1e6)
-(define-private (exp-approx (x int))
-  (let (
-      ;; Clamp x to prevent overflow
-      (x-clamped (if (> x 20000000) 20000000 (if (< x -20000000) -20000000 x)))
-      ;; Taylor series: e^x ≈ 1 + x + x²/2! + x³/3! + x⁴/4! + x⁵/5!
-      (x2 (/ (* x-clamped x-clamped) 1000000))
-      (x3 (/ (* x2 x-clamped) 1000000))
-      (x4 (/ (* x3 x-clamped) 1000000))
-      (x5 (/ (* x4 x-clamped) 1000000))
-    )
-    (+ 1000000
-      x-clamped
-      (/ x2 2)
-      (/ x3 6)
-      (/ x4 24)
-      (/ x5 120)
-    )
-  )
-)
-
-;; Calculates LMSR cost function: C(q) = b * ln(e^(q_yes/b) + e^(q_no/b))
-;; Returns cost in collateral tokens (scaled by 1e6)
-(define-private (calculate-cost (b uint) (q-yes uint) (q-no uint))
-  (let (
-      (b-int (to-int b))
-      (q-yes-int (to-int q-yes))
-      (q-no-int (to-int q-no))
-      ;; Calculate q/b ratios (scaled by 1e6)
-      (ratio-yes (if (> b u0) (/ (* q-yes-int 1000000) b-int) 0))
-      (ratio-no (if (> b u0) (/ (* q-no-int 1000000) b-int) 0))
-      ;; Calculate e^(q/b)
-      (exp-yes (exp-approx ratio-yes))
-      (exp-no (exp-approx ratio-no))
-      ;; Sum of exponentials
-      (sum-exp (+ exp-yes exp-no))
-    )
-    ;; Approximate ln(sum) using log properties
-    ;; For simplicity: ln(sum) ≈ max(ratio-yes, ratio-no) + ln(1 + e^(-|diff|))
-    (let (
-        (max-ratio (if (> ratio-yes ratio-no) ratio-yes ratio-no))
-        (diff (if (> ratio-yes ratio-no) (- ratio-yes ratio-no) (- ratio-no ratio-yes)))
-        ;; ln(1 + e^(-diff)) ≈ e^(-diff) for large diff, otherwise use approximation
-        (ln-correction (if (> diff 5000000) 
-          (/ 1000000 (exp-approx diff))
-          (/ (exp-approx (- 0 diff)) 2)
-        ))
-      )
-      ;; C = b * (max-ratio + ln-correction)
-      (to-uint (/ (* b-int (+ max-ratio ln-correction)) 1000000))
-    )
-  )
-)
-
-;; Calculates the cost to buy a specific amount of shares
-;; Returns the collateral amount needed
-(define-read-only (get-buy-cost 
-    (market-id uint)
-    (outcome uint)
-    (shares uint)
-  )
-  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
-    (let (
-        (b (get b market))
-        (current-yes (get q-yes market))
-        (current-no (get q-no market))
-        (new-yes (if (is-eq outcome u1) (+ current-yes shares) current-yes))
-        (new-no (if (is-eq outcome u0) (+ current-no shares) current-no))
-        (cost-before (calculate-cost b current-yes current-no))
-        (cost-after (calculate-cost b new-yes new-no))
-      )
-      (ok (if (>= cost-after cost-before) 
-        (- cost-after cost-before)
-        u0
-      ))
-    )
-  )
-)
-
-;; Calculates the payout from selling shares
-;; Returns the collateral amount received
-(define-read-only (get-sell-payout
-    (market-id uint)
-    (outcome uint)
-    (shares uint)
-  )
-  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
-    (let (
-        (b (get b market))
-        (current-yes (get q-yes market))
-        (current-no (get q-no market))
-      )
-      (asserts! (if (is-eq outcome u1) 
-        (>= current-yes shares)
-        (>= current-no shares)
-      ) ERR_INSUFFICIENT_SHARES)
-      (let (
-          (new-yes (if (is-eq outcome u1) (- current-yes shares) current-yes))
-          (new-no (if (is-eq outcome u0) (- current-no shares) current-no))
-          (cost-before (calculate-cost b current-yes current-no))
-          (cost-after (calculate-cost b new-yes new-no))
+;; Mathematical approximations for LMSR calculations
+;; Uses polynomial expansion to estimate exponential values
+;; Accuracy is sufficient for small input ranges typical in market operations
+(define-read-only (exp-approx (x uint))
+    (let
+        (
+            (x-scaled (/ x u1000))
+            (x2 (/ (* x-scaled x-scaled) u1000))
+            (x3 (/ (* x2 x-scaled) u1000))
+            (x4 (/ (* x3 x-scaled) u1000))
         )
-        (ok (if (>= cost-before cost-after)
-          (- cost-before cost-after)
-          u0
-        ))
-      )
+        (+ u1000000 (+ x-scaled (+ (/ x2 u2) (+ (/ x3 u6) (/ x4 u24)))))
     )
-  )
 )
 
-;; Calculates current market price for an outcome (0 to 1, scaled by 1e6)
-;; Price = e^(q_outcome/b) / (e^(q_yes/b) + e^(q_no/b))
-(define-read-only (get-price
-    (market-id uint)
-    (outcome uint)
-  )
-  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
-    (let (
-        (b-int (to-int (get b market)))
-        (q-yes-int (to-int (get q-yes market)))
-        (q-no-int (to-int (get q-no market)))
-        (ratio-yes (if (> b-int 0) (/ (* q-yes-int 1000000) b-int) 0))
-        (ratio-no (if (> b-int 0) (/ (* q-no-int 1000000) b-int) 0))
-        (exp-yes (exp-approx ratio-yes))
-        (exp-no (exp-approx ratio-no))
-        (sum-exp (+ exp-yes exp-no))
-      )
-      (ok (if (is-eq outcome u1)
-        (/ (* exp-yes 1000000) sum-exp)
-        (/ (* exp-no 1000000) sum-exp)
-      ))
+;; Logarithm estimation using series expansion
+;; Optimized for values near 1.0 which is common in our pricing calculations
+(define-read-only (ln-approx (x uint))
+    (if (<= x u1000000)
+        u0
+        (let
+            (
+                (x-minus-1 (- x u1000000))
+                (x-plus-1 (+ x u1000000))
+                (ratio (/ (* x-minus-1 u1000000) x-plus-1))
+                (ratio3 (/ (* ratio ratio ratio) (* u1000000 u1000000)))
+            )
+            (/ (* (+ (* ratio u2) (/ ratio3 u3)) u1000000) u1000000)
+        )
     )
-  )
 )
 
-;; Calculate trading fee for a given amount
-;; Fee is calculated as: amount * fee_rate / 1e6
-(define-private (calculate-fee (amount uint))
-  (/ (* amount (var-get trading-fee-rate)) u1000000)
-)
-
-;; Check if market is paused
-;; Returns true if either emergency pause is active or market-specific pause is set
-(define-private (is-market-active (market-id uint))
-  (and 
-    (not (var-get emergency-pause))
-    (not (default-to false (map-get? market-paused market-id)))
-  )
-)
-
-;; ============================================================================
-;; Market Functions
-;; ============================================================================
-
-;; ============================================================================
-;; Private Helper Functions
-;; ============================================================================
-
-;; Retrieves market data or returns error if not found
-(define-private (get-market-or-fail (market-id uint))
-  (let ((opt (map-get? markets market-id)))
-    (if (is-none opt)
-      ERR_MARKET_NOT_CREATED
-      (ok (unwrap! opt (err u0)))
+;; Computes the total cost function value for current market state
+;; This represents the total collateral locked in the market
+;; Computes the total cost function value for current market state
+;; This represents the total collateral locked in the market
+(define-read-only (calculate-cost (b uint) (q-yes uint) (q-no uint))
+    (let
+        (
+            (exp-yes (exp-approx (/ q-yes b)))
+            (exp-no (exp-approx (/ q-no b)))
+            (sum-exp (+ exp-yes exp-no))
+            (ln-sum (ln-approx sum-exp))
+        )
+        (/ (* b ln-sum) u1000000)
     )
-  )
 )
 
-;; Validates that a market exists and is active for trading
-(define-private (validate-market-active (market-id uint))
-  (let ((market (try! (get-market-or-fail market-id))))
-    (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
-    (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
-    (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
-    (ok market)
-  )
+;; Determines the current price per YES share based on current quantities
+;; Price increases as more YES shares are purchased
+(define-read-only (calculate-price-yes (b uint) (q-yes uint) (q-no uint))
+    (let
+        (
+            (exp-yes (exp-approx (/ q-yes b)))
+            (exp-no (exp-approx (/ q-no b)))
+            (sum-exp (+ exp-yes exp-no))
+        )
+        (/ (* exp-yes u1000000) sum-exp)
+    )
+)
+
+;; Determines the current price per NO share based on current quantities
+;; Price increases as more NO shares are purchased
+(define-read-only (calculate-price-no (b uint) (q-yes uint) (q-no uint))
+    (let
+        (
+            (exp-yes (exp-approx (/ q-yes b)))
+            (exp-no (exp-approx (/ q-no b)))
+            (sum-exp (+ exp-yes exp-no))
+        )
+        (/ (* exp-no u1000000) sum-exp)
+    )
+)
+
+;; Public view function to query the total cost value for a specific market
+(define-read-only (cost (market-id uint))
+    (let
+        (
+            (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
+        )
+        (ok (calculate-cost (get b market) (get q-yes market) (get q-no market)))
+    )
+)
+
+;; Public view function to check current YES share price
+(define-read-only (price-yes (market-id uint))
+    (let
+        (
+            (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
+        )
+        (ok (calculate-price-yes (get b market) (get q-yes market) (get q-no market)))
+    )
+)
+
+;; Public view function to check current NO share price
+(define-read-only (price-no (market-id uint))
+    (let
+        (
+            (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
+        )
+        (ok (calculate-price-no (get b market) (get q-yes market) (get q-no market)))
+    )
 )
 
 ;; Establishes a new prediction market with specified parameters
 ;; Requires initial liquidity deposit from the creator
-(define-public (create-market
-    (b uint)
-    (start-time uint)
-    (end-time uint)
-    (question (string-ascii 256))
-    (c-id (string-ascii 64))
-  )
-  (let ((caller tx-sender))
-    (begin
-      (asserts! (is-eq caller (var-get contract-owner)) ERR_UNAUTHORIZED)
-      (asserts! (> b u0) ERR_ZERO_LIQUIDITY)
-      (asserts! (> end-time start-time) ERR_INVALID_PARAMS)
-      (asserts! (>= start-time block-height) ERR_INVALID_PARAMS)
-      ;; Check maximum market duration
-      (asserts! (<= (- end-time start-time) (var-get max-market-duration)) ERR_DURATION_EXCEEDED)
-      (let (
-          (current-count (default-to u0 (map-get? market-count MARKET_COUNT_KEY)))
-          (market-id (+ current-count u1))
-          ;; Scale liquidity parameter to 18-decimal internal representation
-          (b-internal (* b u1000000000000))
-          ;; Required initial deposit equals b multiplied by natural log of 2
-          ;; Precomputed constant: ln(2) approximately equals 693147 in our fixed-point scale
-          (ln2 u693147)
-          (fund-amount (/ (* b-internal ln2) u1000000))
+(define-public (create-market (b uint) (start-time uint) (end-time uint) (question (string-ascii 256)) (c-id (string-ascii 64)) (collateral-trait <sip-010-trait>) (outcome-contract <outcome-trait>))
+    (let
+        (
+            (caller tx-sender)
+            (is-auth (unwrap-panic (is-authorized caller)))
         )
         (begin
-          ;; Collect the initial liquidity deposit from caller to this contract
-          (try! (contract-call? .token transfer u0 fund-amount caller
-            (as-contract tx-sender)
-          ))
-
-
-          ;; Set up YES and NO token identifiers for this market
-          (let (
-              (token-id-yes (+ (* market-id u2) u1))
-              (token-id-no (* market-id u2))
-              (name-yes "Market YES")
-              (name-no "Market NO")
+            (asserts! is-auth ERR_UNAUTHORIZED)
+            (asserts! (> b u0) ERR_ZERO_LIQUIDITY)
+            (asserts! (> end-time start-time) ERR_INVALID_PARAMS)
+            (asserts! (>= start-time block-height) ERR_INVALID_PARAMS)
+            (asserts! (is-eq (contract-of collateral-trait) (var-get collateral-token)) ERR_INVALID_PARAMS)
+            (asserts! (is-eq (contract-of outcome-contract) (var-get outcome-token-contract)) ERR_INVALID_PARAMS)
+            (let
+                (
+                    (current-count (default-to u0 (map-get? market-count u0)))
+                    (market-id (+ current-count u1))
+                    ;; Scale liquidity parameter to 18-decimal internal representation
+                    (b-internal (* b u1000000000000))
+                    ;; Required initial deposit equals b multiplied by natural log of 2
+                    ;; Precomputed constant: ln(2) approximately equals 693147 in our fixed-point scale
+                    (ln2 u693147)
+                    (fund-amount (/ (* b-internal ln2) u1000000))
+                )
+                (begin
+                    ;; Collect the initial liquidity deposit
+                    (try! (contract-call? collateral-trait transfer fund-amount caller (as-contract tx-sender) none))
+                    ;; Set up YES and NO token identifiers for this market
+                    (let
+                        (
+                            (token-id-yes (+ (* market-id u2) u1))
+                            (token-id-no (* market-id u2))
+                            (name-yes "Market YES")
+                            (name-no "Market NO")
+                        )
+                        (begin
+                            (try! (contract-call? outcome-contract initialize-token market-id token-id-yes token-id-no name-yes name-no "YES" "NO"))
+                            (map-set markets market-id
+                                {
+                                    exists: true,
+                                    b: b-internal,
+                                    q-yes: u0,
+                                    q-no: u0,
+                                    start-time: start-time,
+                                    end-time: end-time,
+                                    resolved: false,
+                                    yes-won: false,
+                                    question: question,
+                                    c-id: c-id,
+                                    token-id-yes: token-id-yes,
+                                    token-id-no: token-id-no
+                                }
+                            )
+                            (map-set market-count u0 market-id)
+                            (ok market-id)
+                        )
+                    )
+                )
             )
-            (begin
-              ;; Initialize tokens internally (no contract-call needed)
-              (initialize-token
-                market-id token-id-yes token-id-no name-yes name-no "YES" "NO"
-              )
-
-              (map-set markets market-id {
-                exists: true,
-                b: b-internal,
-                q-yes: u0,
-                q-no: u0,
-                start-time: start-time,
-                end-time: end-time,
-                resolved: false,
-                yes-won: false,
-                question: question,
-                c-id: c-id,
-                token-id-yes: token-id-yes,
-                token-id-no: token-id-no,
-              })
-              (map-set market-count MARKET_COUNT_KEY market-id)
-              (ok market-id)
-            )
-          )
         )
-      )
     )
-  )
+)
+
+;; Core trading logic shared by both YES and NO purchase functions
+;; Handles quantity updates, cost calculation, and token minting
+(define-private (buy-shares (market-id uint) (amount uint) (yes bool) (collateral-trait <sip-010-trait>) (outcome-contract <outcome-trait>))
+    (let
+        (
+            (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
+        )
+        (begin
+            (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
+            (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
+            (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
+            (let
+                (
+                    (initial-cost (try! (cost market-id)))
+                    (amount-internal (* amount u1000000000000))
+                    (new-q-yes (if yes (+ (get q-yes market) amount-internal) (get q-yes market)))
+                    (new-q-no (if yes (get q-no market) (+ (get q-no market) amount-internal)))
+                    (new-cost (calculate-cost (get b market) new-q-yes new-q-no))
+                    (collateral-required (/ (- new-cost initial-cost) u1000000000000))
+                )
+                (begin
+                    (asserts! (> collateral-required u0) ERR_INVALID_PARAMS)
+                    ;; Collect payment from trader
+                    (try! (contract-call? collateral-trait transfer collateral-required tx-sender (as-contract tx-sender) none))
+                    ;; Record the new share quantities
+                    (map-set markets market-id
+                        {
+                            exists: true,
+                            b: (get b market),
+                            q-yes: new-q-yes,
+                            q-no: new-q-no,
+                            start-time: (get start-time market),
+                            end-time: (get end-time market),
+                            resolved: (get resolved market),
+                            yes-won: (get yes-won market),
+                            question: (get question market),
+                            c-id: (get c-id market),
+                            token-id-yes: (get token-id-yes market),
+                            token-id-no: (get token-id-no market)
+                        }
+                    )
+                    ;; Issue the purchased shares to the trader
+                    (let
+                        (
+                            (token-id (if yes (get token-id-yes market) (get token-id-no market)))
+                        )
+                        (try! (contract-call? outcome-contract mint token-id tx-sender amount))
+                    )
+                    (ok true)
+                )
+            )
+        )
+    )
 )
 
 ;; Public entry point for purchasing YES outcome shares
-(define-public (buy-yes
-    (market-id uint)
-    (shares uint)
-    (country-code (string-ascii 2))
-  )
-  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
+(define-public (buy-yes (market-id uint) (amount uint) (collateral-trait <sip-010-trait>) (outcome-contract <outcome-trait>))
     (begin
-      ;; Compliance checks
-      (try! (check-user-compliance tx-sender country-code))
-      
-      ;; Check market is active
-      (asserts! (is-market-active market-id) ERR_MARKET_PAUSED)
-      
-      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
-      (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
-      (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
-      (asserts! (> shares u0) ERR_INVALID_PARAMS)
-      
-      ;; Calculate dynamic cost using LMSR
-      (let ((cost (unwrap! (get-buy-cost market-id u1 shares) ERR_INVALID_PARAMS)))
-        (asserts! (> cost u0) ERR_INVALID_PARAMS)
-        ;; Calculate and collect fee
-        (let ((fee (calculate-fee cost))
-              (total-cost (+ cost fee)))
-          ;; Transfer collateral from buyer to contract
-          (try! (contract-call? .token transfer u0 total-cost tx-sender (as-contract tx-sender)))
-          ;; Add fee to protocol pool
-          (var-set protocol-fee-collected (+ (var-get protocol-fee-collected) fee))
-          ;; Update market state
-          (map-set markets market-id (merge market { q-yes: (+ (get q-yes market) shares) }))
-          ;; Mint outcome tokens
-          (mint-token (get token-id-yes market) tx-sender shares)
-          (ok cost)
-        )
-      )
+        (asserts! (is-eq (contract-of collateral-trait) (var-get collateral-token)) ERR_INVALID_PARAMS)
+        (asserts! (is-eq (contract-of outcome-contract) (var-get outcome-token-contract)) ERR_INVALID_PARAMS)
+        (buy-shares market-id amount true collateral-trait outcome-contract)
     )
-  )
 )
 
 ;; Public entry point for purchasing NO outcome shares
-(define-public (buy-no
-    (market-id uint)
-    (shares uint)
-    (country-code (string-ascii 2))
-  )
-  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
+(define-public (buy-no (market-id uint) (amount uint) (collateral-trait <sip-010-trait>) (outcome-contract <outcome-trait>))
     (begin
-      ;; Compliance checks
-      (try! (check-user-compliance tx-sender country-code))
-      
-      ;; Check market is active
-      (asserts! (is-market-active market-id) ERR_MARKET_PAUSED)
-      
-      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
-      (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
-      (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
-      (asserts! (> shares u0) ERR_INVALID_PARAMS)
-      
-      ;; Calculate dynamic cost using LMSR
-      (let ((cost (unwrap! (get-buy-cost market-id u0 shares) ERR_INVALID_PARAMS)))
-        (asserts! (> cost u0) ERR_INVALID_PARAMS)
-        ;; Calculate and collect fee
-        (let ((fee (calculate-fee cost))
-              (total-cost (+ cost fee)))
-          ;; Transfer collateral from buyer to contract
-          (try! (contract-call? .token transfer u0 total-cost tx-sender (as-contract tx-sender)))
-          ;; Add fee to protocol pool
-          (var-set protocol-fee-collected (+ (var-get protocol-fee-collected) fee))
-          ;; Update market state
-          (map-set markets market-id (merge market { q-no: (+ (get q-no market) shares) }))
-          ;; Mint outcome tokens
-          (mint-token (get token-id-no market) tx-sender shares)
-          (ok cost)
-        )
-      )
+        (asserts! (is-eq (contract-of collateral-trait) (var-get collateral-token)) ERR_INVALID_PARAMS)
+        (asserts! (is-eq (contract-of outcome-contract) (var-get outcome-token-contract)) ERR_INVALID_PARAMS)
+        (buy-shares market-id amount false collateral-trait outcome-contract)
     )
-  )
 )
 
 ;; Finalize market outcome after end time has passed
 ;; Only authorized roles can call this function
-(define-public (resolve-market
-    (market-id uint)
-    (yes-won bool)
-  )
-  (let (
-      (caller tx-sender)
-      (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
+(define-public (resolve-market (market-id uint) (yes-won bool))
+    (let
+        (
+            (caller tx-sender)
+            (is-auth (unwrap-panic (is-authorized caller)))
+            (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
+        )
+        (begin
+            (asserts! is-auth ERR_UNAUTHORIZED)
+            (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
+            (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
+            (asserts! (>= block-height (get end-time market)) ERR_MARKET_NOT_EXPIRED)
+            (map-set markets market-id
+                {
+                    exists: true,
+                    b: (get b market),
+                    q-yes: (get q-yes market),
+                    q-no: (get q-no market),
+                    start-time: (get start-time market),
+                    end-time: (get end-time market),
+                    resolved: true,
+                    yes-won: yes-won,
+                    question: (get question market),
+                    c-id: (get c-id market),
+                    token-id-yes: (get token-id-yes market),
+                    token-id-no: (get token-id-no market)
+                }
+            )
+            (ok true)
+        )
     )
-    (begin
-      (asserts! (is-eq caller (var-get contract-owner)) ERR_UNAUTHORIZED)
-      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
-      (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
-      (asserts! (>= block-height (get end-time market)) ERR_MARKET_NOT_EXPIRED)
-      ;; Check minimum resolution delay
-      (asserts! (>= block-height (+ (get end-time market) (var-get min-resolution-delay))) 
-                ERR_RESOLUTION_TOO_EARLY)
-      (map-set markets market-id (merge market { resolved: true, yes-won: yes-won }))
-      (ok true)
-    )
-  )
 )
 
 ;; Allows users to redeem their winning shares for collateral
-(define-public (claim (market-id uint))
-  (let (
-      (market (try! (get-market-or-fail market-id)))
-      (token-id (if (get yes-won market) (get token-id-yes market) (get token-id-no market)))
-    )
-    (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
-    (asserts! (get resolved market) ERR_NOT_RESOLVED)
-    (let ((winning-shares (get-user-balance token-id tx-sender)))
-      (asserts! (> winning-shares u0) ERR_INSUFFICIENT_SHARES)
-      (try! (burn-token token-id tx-sender winning-shares))
-      (try! (as-contract
-        (contract-call? .token transfer u0 winning-shares tx-sender tx-sender)
-      ))
-      (ok winning-shares)
-    )
-  )
-)
-
-;; Sell shares back to the market at current LMSR price
-(define-public (sell-yes
-    (market-id uint)
-    (shares uint)
-    (country-code (string-ascii 2))
-  )
-  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
-    (begin
-      ;; Compliance checks
-      (try! (check-user-compliance tx-sender country-code))
-      
-      ;; Check market is active
-      (asserts! (is-market-active market-id) ERR_MARKET_PAUSED)
-      
-      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
-      (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
-      (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
-      (asserts! (> shares u0) ERR_INVALID_PARAMS)
-      
-      ;; Check user has enough shares
-      (let ((user-balance (get-user-balance (get token-id-yes market) tx-sender)))
-        (asserts! (>= user-balance shares) ERR_INSUFFICIENT_SHARES)
-        
-        ;; Calculate payout using LMSR
-        (let ((payout (unwrap! (get-sell-payout market-id u1 shares) ERR_INVALID_PARAMS)))
-          (asserts! (> payout u0) ERR_INVALID_PARAMS)
-          ;; Burn outcome tokens
-          (try! (burn-token (get token-id-yes market) tx-sender shares))
-          ;; Update market state
-          (map-set markets market-id (merge market { q-yes: (- (get q-yes market) shares) }))
-          ;; Transfer collateral to seller
-          (let ((seller tx-sender))
-            (try! (as-contract
-              (contract-call? .token transfer u0 payout tx-sender seller)
-            ))
-          )
-          (ok payout)
+;; Burns outcome tokens and transfers equivalent collateral amount
+(define-public (claim (market-id uint) (collateral-trait <sip-010-trait>) (outcome-contract <outcome-trait>))
+    (let
+        (
+            (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
+            (winning-outcome (if (get yes-won market) u1 u0))
+            (token-id (if (get yes-won market) (get token-id-yes market) (get token-id-no market)))
         )
-      )
-    )
-  )
-)
-
-(define-public (sell-no
-    (market-id uint)
-    (shares uint)
-    (country-code (string-ascii 2))
-  )
-  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
-    (begin
-      ;; Compliance checks
-      (try! (check-user-compliance tx-sender country-code))
-      
-      ;; Check market is active
-      (asserts! (is-market-active market-id) ERR_MARKET_PAUSED)
-      
-      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
-      (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
-      (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
-      (asserts! (> shares u0) ERR_INVALID_PARAMS)
-      
-      ;; Check user has enough shares
-      (let ((user-balance (get-user-balance (get token-id-no market) tx-sender)))
-        (asserts! (>= user-balance shares) ERR_INSUFFICIENT_SHARES)
-        
-        ;; Calculate payout using LMSR
-        (let ((payout (unwrap! (get-sell-payout market-id u0 shares) ERR_INVALID_PARAMS)))
-          (asserts! (> payout u0) ERR_INVALID_PARAMS)
-          ;; Burn outcome tokens
-          (try! (burn-token (get token-id-no market) tx-sender shares))
-          ;; Update market state
-          (map-set markets market-id (merge market { q-no: (- (get q-no market) shares) }))
-          ;; Transfer collateral to seller
-          (let ((seller tx-sender))
-            (try! (as-contract
-              (contract-call? .token transfer u0 payout tx-sender seller)
-            ))
-          )
-          (ok payout)
+        (begin
+            (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
+            (asserts! (get resolved market) ERR_NOT_RESOLVED)
+            (asserts! (is-eq (contract-of collateral-trait) (var-get collateral-token)) ERR_INVALID_PARAMS)
+            (asserts! (is-eq (contract-of outcome-contract) (var-get outcome-token-contract)) ERR_INVALID_PARAMS)
+            (let
+                (
+                    (winning-shares (try! (contract-call? outcome-contract get-balance token-id tx-sender)))
+                )
+                (begin
+                    (asserts! (> winning-shares u0) ERR_INSUFFICIENT_SHARES)
+                    ;; Remove shares from user's balance
+                    (try! (contract-call? outcome-contract burn token-id tx-sender winning-shares))
+                    ;; Payout collateral at 1:1 exchange rate
+                    (try! (contract-call? collateral-trait transfer winning-shares (as-contract tx-sender) tx-sender none))
+                    (ok winning-shares)
+                )
+            )
         )
-      )
     )
-  )
 )
 
 ;; Retrieve complete market data structure
 (define-read-only (get-market (market-id uint))
-  (ok (map-get? markets market-id))
+    (ok (map-get? markets market-id))
 )
 
-;; Add liquidity to a market
-;; Liquidity providers receive LP shares proportional to their contribution
-(define-public (add-liquidity
-    (market-id uint)
-    (amount uint)
-  )
-  (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
-    (begin
-      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
-      (asserts! (> amount u0) ERR_INVALID_PARAMS)
-      
-      ;; Transfer collateral to contract
-      (try! (contract-call? .token transfer u0 amount tx-sender (as-contract tx-sender)))
-      
-      ;; Calculate LP shares (proportional to contribution)
-      (let (
-          (current-lp-shares (default-to u0 (map-get? total-lp-shares market-id)))
-          (new-shares (if (is-eq current-lp-shares u0) amount (/ (* amount current-lp-shares) (get b market))))
-          (user-current-shares (default-to u0 (map-get? lp-shares { market-id: market-id, provider: tx-sender })))
-        )
-        ;; Update LP shares
-        (map-set lp-shares { market-id: market-id, provider: tx-sender } (+ user-current-shares new-shares))
-        (map-set total-lp-shares market-id (+ current-lp-shares new-shares))
-        (ok new-shares)
-      )
-    )
-  )
-)
-
-;; Remove liquidity from a market
-;; Burns LP shares and returns proportional collateral to the provider
-(define-public (remove-liquidity
-    (market-id uint)
-    (lp-shares-amount uint)
-  )
-  (let (
-      (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
-      (user-shares (default-to u0 (map-get? lp-shares { market-id: market-id, provider: tx-sender })))
-      (total-shares (default-to u0 (map-get? total-lp-shares market-id)))
-    )
-    (begin
-      (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
-      (asserts! (>= user-shares lp-shares-amount) ERR_INSUFFICIENT_SHARES)
-      (asserts! (> lp-shares-amount u0) ERR_INVALID_PARAMS)
-      
-      ;; Calculate withdrawal amount (proportional to LP shares)
-      (let ((withdrawal-amount (/ (* lp-shares-amount (get b market)) total-shares)))
-        ;; Update LP shares
-        (map-set lp-shares { market-id: market-id, provider: tx-sender } (- user-shares lp-shares-amount))
-        (map-set total-lp-shares market-id (- total-shares lp-shares-amount))
-        
-        ;; Transfer collateral back to LP
-        (let ((recipient tx-sender))
-          (try! (as-contract (contract-call? .token transfer u0 withdrawal-amount tx-sender recipient)))
-        )
-        (ok withdrawal-amount)
-      )
-    )
-  )
-)
-
-;; Number of markets that have been created so far
+;; Returns the total number of markets that have been created
 (define-read-only (get-market-count)
-  (ok (default-to u0 (map-get? market-count MARKET_COUNT_KEY)))
-)
-
-;; Get LP shares for a provider
-(define-read-only (get-lp-shares (market-id uint) (provider principal))
-  (ok (default-to u0 (map-get? lp-shares { market-id: market-id, provider: provider })))
-)
-
-;; Get total LP shares for a market
-(define-read-only (get-total-lp-shares (market-id uint))
-  (ok (default-to u0 (map-get? total-lp-shares market-id)))
-)
-
-;; Get protocol fee collected
-(define-read-only (get-protocol-fees)
-  (ok (var-get protocol-fee-collected))
-)
-
-;; Check if market is paused
-(define-read-only (is-market-paused (market-id uint))
-  (ok (or 
-    (var-get emergency-pause)
-    (default-to false (map-get? market-paused market-id))
-  ))
-)
-
-;; Get current trading fee rate
-(define-read-only (get-trading-fee-rate)
-  (ok (var-get trading-fee-rate))
-)
-
-;; Expose the contract owner address
-(define-read-only (get-owner)
-  (ok (var-get contract-owner))
+    (ok (default-to u0 (map-get? market-count u0)))
 )

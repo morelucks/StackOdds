@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useUserRights } from "@/hooks/useUserRights"
 import { Button } from "@/components/ui/button"
+import { resolveMarket } from "@/lib/stacks-transactions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CONTRACT_ADDRESS } from "@/lib/constants"
 import { toast } from "sonner"

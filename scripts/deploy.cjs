@@ -1,19 +1,20 @@
-const { makeContractDeploy, broadcastTransaction, AnchorMode } = require('@stacks/transactions');
+const { makeContractDeploy, broadcastTransaction, AnchorMode, getAddressFromPrivateKey } = require('@stacks/transactions');
 const { STACKS_MAINNET } = require('@stacks/network');
 const fs = require('fs');
+require('dotenv').config();
 
-const PRIVATE_KEY = '3205c5287311201576ebcd982dd146b07de9c31198c28257d4c7af47600766ba';
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const DEPLOYER_ADDRESS = getAddressFromPrivateKey(PRIVATE_KEY);
 
 async function deployContract(contractName, contractPath) {
   const codeBody = fs.readFileSync(contractPath, 'utf8')
-    .replace(/[^\x00-\x7F]/g, ''); // Remove non-ASCII characters
+    .replace(/[^\x00-\x7F]/g, '');
   
-  // Fetch account info
-  const accountResponse = await fetch('https://api.mainnet.hiro.so/v2/accounts/SP19PS42C7R7BR4VCX2YN8KPHXSB0ZC19K6PFEKTC');
+  const accountResponse = await fetch(`https://api.mainnet.hiro.so/v2/accounts/${DEPLOYER_ADDRESS}`);
   const accountData = await accountResponse.json();
   const nonce = accountData.nonce;
   
-  console.log(`Account nonce: ${nonce}, balance: ${parseInt(accountData.balance, 16) / 1000000} STX`);
+  console.log(`Account: ${DEPLOYER_ADDRESS}, nonce: ${nonce}, balance: ${parseInt(accountData.balance, 16) / 1000000} STX`);
   
   const txOptions = {
     contractName,
@@ -21,7 +22,8 @@ async function deployContract(contractName, contractPath) {
     senderKey: PRIVATE_KEY,
     network: STACKS_MAINNET,
     anchorMode: AnchorMode.Any,
-    fee: 50000,
+    clarityVersion: 3,
+    fee: 150000,
     nonce,
   };
 
@@ -32,24 +34,29 @@ async function deployContract(contractName, contractPath) {
 }
 
 async function main() {
-  console.log('Deploying token contract...');
+  console.log('Deploying token contract first...\n');
   const tokenResult = await deployContract('token', 'contracts/token.clar');
-  console.log('Token deployed:', tokenResult);
   
   if (tokenResult.txid) {
-    console.log(`\nToken TX: https://explorer.hiro.so/txid/${tokenResult.txid}?chain=mainnet`);
+    console.log('✅ Token deployed!');
+    console.log(`TX: https://explorer.hiro.so/txid/${tokenResult.txid}?chain=mainnet`);
+    console.log(`Contract: ${DEPLOYER_ADDRESS}.token\n`);
     
-    // Wait a bit before deploying main contract
-    console.log('\nWaiting 30 seconds before deploying main contract...');
-    await new Promise(resolve => setTimeout(resolve, 30000));
+    console.log('Waiting 60 seconds before deploying main contract...\n');
+    await new Promise(resolve => setTimeout(resolve, 60000));
     
-    console.log('\nDeploying main contract...');
-    const contractResult = await deployContract('contract', 'contracts/contract.clar');
-    console.log('Contract deployed:', contractResult);
+    console.log('Deploying StackOdds main contract...\n');
+    const contractResult = await deployContract('stackodds', 'contracts/contract.clar');
     
     if (contractResult.txid) {
-      console.log(`\nContract TX: https://explorer.hiro.so/txid/${contractResult.txid}?chain=mainnet`);
+      console.log('\n✅ StackOdds deployed successfully!');
+      console.log(`TX: https://explorer.hiro.so/txid/${contractResult.txid}?chain=mainnet`);
+      console.log(`Contract: ${DEPLOYER_ADDRESS}.stackodds`);
+    } else {
+      console.log('Result:', contractResult);
     }
+  } else {
+    console.log('Token deployment failed:', tokenResult);
   }
 }
 

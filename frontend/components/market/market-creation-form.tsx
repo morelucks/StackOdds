@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { CONTRACT_ADDRESS } from "@/lib/constants"
 import { Button } from "@/components/ui/button"
+import { resolveMarket } from "@/lib/stacks-transactions"
 import {
     Form,
     FormControl,
@@ -23,6 +24,7 @@ import { useEffect, useState } from "react"
 import { DateTimePicker } from "@/components/ui/datetime-picker"
 import { uploadFileToCloudinary } from "@/lib/claudinary"
 import { useStacks } from "@/hooks/useStacks"
+import { claimWinnings } from "@/lib/stacks-transactions"
 import { getStacksAddress } from "@/lib/wallet-utils"
 import { useRouter } from "next/navigation"
 import { createMarket } from "@/lib/stacks-transactions"
@@ -194,7 +196,7 @@ export function MarketCreationForm() {
                 startTime = now + 60
             }
 
-            const liquidityAmount = Math.floor(parseFloat(values.liquidity.toString()) * 1000000);
+
 
             const [tokenAddress, tokenContractName] = TOKEN_CONTRACT_ADDRESS.split('.');
             const [marketContractAddress, marketContractName] = CONTRACT_ADDRESS.split('.');
@@ -202,7 +204,7 @@ export function MarketCreationForm() {
             await createMarket({
                 contractAddress: marketContractAddress,
                 contractName: marketContractName,
-                liquidity: liquidityAmount,
+                liquidity: values.liquidity, // Pass raw liquidity as per instruction
                 startTime,
                 endTime,
                 question: values.question,
@@ -456,16 +458,16 @@ export function MarketCreationForm() {
                 </div>
 
                 <div className="pt-4">
-                    <Button 
-                        type="submit" 
-                        disabled={isCreatePending || !isStacksConnected} 
+                    <Button
+                        type="submit"
+                        disabled={isCreatePending || !isStacksConnected}
                         className="w-full text-base font-semibold h-12"
                     >
-                        {!isStacksConnected 
-                            ? "Connect Wallet to Create Market" 
-                            : isCreatePending 
-                            ? (createStep || "Processing...") 
-                            : "Create Market"}
+                        {!isStacksConnected
+                            ? "Connect Wallet to Create Market"
+                            : isCreatePending
+                                ? (createStep || "Processing...")
+                                : "Create Market"}
                     </Button>
                 </div>
 
