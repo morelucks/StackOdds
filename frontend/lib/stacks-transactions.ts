@@ -12,7 +12,7 @@ import {
     Pc
 } from '@stacks/transactions';
 import { STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
-import { toMicroUnits } from './constants';
+import { toMicroUnits, getUSDCxAddress, TOKEN_CONTRACT_ADDRESS } from './constants';
 
 const NETWORK = process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet' ? STACKS_MAINNET : STACKS_TESTNET;
 
@@ -65,7 +65,8 @@ export const createMarket = async (params: CreateMarketParams) => {
             uintCV(endTime),
             stringAsciiCV(question),
             stringAsciiCV(metadataCid),
-            contractPrincipalCV(tokenAddr, tokenName)
+            contractPrincipalCV(getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[0], getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[1]),
+            contractPrincipalCV(TOKEN_CONTRACT_ADDRESS.split('.')[0], TOKEN_CONTRACT_ADDRESS.split('.')[1])
         ],
         postConditionMode: PostConditionMode.Allow,
         postConditions: [],
@@ -121,7 +122,9 @@ export const buyOutcome = async (params: BuyParams) => {
         functionName,
         functionArgs: [
             uintCV(marketId),
-            uintCV(amountMicro)
+            uintCV(amountMicro),
+            contractPrincipalCV(getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[0], getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[1]),
+            contractPrincipalCV(TOKEN_CONTRACT_ADDRESS.split('.')[0], TOKEN_CONTRACT_ADDRESS.split('.')[1])
         ],
         postConditionMode: PostConditionMode.Allow,
         postConditions: [],
@@ -208,7 +211,9 @@ export const claimWinnings = async (params: ClaimParams) => {
         contractName,
         functionName: 'claim',
         functionArgs: [
-            uintCV(marketId)
+            uintCV(marketId),
+            contractPrincipalCV(getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[0], getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[1]),
+            contractPrincipalCV(TOKEN_CONTRACT_ADDRESS.split('.')[0], TOKEN_CONTRACT_ADDRESS.split('.')[1])
         ],
         postConditionMode: PostConditionMode.Deny,
         postConditions: [],
