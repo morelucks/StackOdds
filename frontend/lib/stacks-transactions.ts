@@ -7,10 +7,12 @@ import {
     uintCV,
     boolCV,
     stringAsciiCV,
+    contractPrincipalCV,
     PostConditionMode,
     Pc
 } from '@stacks/transactions';
 import { STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
+import { toMicroUnits } from './constants';
 
 const NETWORK = process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet' ? STACKS_MAINNET : STACKS_TESTNET;
 
