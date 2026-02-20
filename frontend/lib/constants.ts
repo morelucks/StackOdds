@@ -1,6 +1,6 @@
 // Stacks contract addresses
-export const CONTRACT_ADDRESS = "SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB.stackodds-market-v1"
-export const TOKEN_CONTRACT_ADDRESS = "SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB.stackodds-token-v1"
+export const CONTRACT_ADDRESS = "SP34MN3DMM07BNAWYJSHTS4B08T8JRVK8AT810X1B.stackodds-market-v3"
+export const TOKEN_CONTRACT_ADDRESS = "SP34MN3DMM07BNAWYJSHTS4B08T8JRVK8AT810X1B.stackodds-token-v1"
 
 // USDCx on Stacks (Circle xReserve)
 // Mainnet: SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.usdcx
@@ -24,4 +24,4 @@ export const fromMicroUnits = (amount: number): number => {
 };
 
 // Update these with your deployed contract addresses
-export const DEPLOYER_ADDRESS = "SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB"
+export const DEPLOYER_ADDRESS = "SP34MN3DMM07BNAWYJSHTS4B08T8JRVK8AT810X1B"
