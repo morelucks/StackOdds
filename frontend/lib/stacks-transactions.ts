@@ -51,9 +51,8 @@ export const createMarket = async (params: CreateMarketParams) => {
         onCancel
     } = params;
 
-    // NOTE: stackodds-token-v1 does not define a standard fungible token 'usdcx'
-    // It uses a map-based balance system. Standard FT post-conditions will fail.
-    // For this prototype, we use PostConditionMode.Allow.
+    const liquidityMicro = toMicroUnits(liquidity);
+    const [tokenAddr, tokenName] = `${tokenAddress}.${tokenContractName}`.split('.');
 
     await openContractCall({
         network: NETWORK,
@@ -61,11 +60,12 @@ export const createMarket = async (params: CreateMarketParams) => {
         contractName,
         functionName: 'create-market',
         functionArgs: [
-            uintCV(liquidity),
+            uintCV(liquidityMicro),
             uintCV(startTime),
             uintCV(endTime),
             stringAsciiCV(question),
-            stringAsciiCV(metadataCid)
+            stringAsciiCV(metadataCid),
+            contractPrincipalCV(tokenAddr, tokenName)
         ],
         postConditionMode: PostConditionMode.Allow,
         postConditions: [],
