@@ -7,11 +7,15 @@ cache_dir = "./.cache"
 
 [contracts.token]
 path = "contracts/token.clar"
-epoch = 2.05
+epoch = 2.1
 
 [contracts.contract]
 path = "contracts/contract.clar"
-epoch = 2.05
+epoch = 2.1
+
+[contracts.pool-token]
+path = "contracts/pool-token.clar"
+epoch = 2.1
 
 [repl.analysis]
 passes = ["check_checker"]
