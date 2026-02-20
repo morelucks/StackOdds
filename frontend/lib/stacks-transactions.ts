@@ -112,8 +112,8 @@ export const buyOutcome = async (params: BuyParams) => {
     } = params;
 
     const functionName = outcome === 'YES' ? 'buy-yes' : 'buy-no';
+    const amountMicro = toMicroUnits(amount);
 
-    // NOTE: stackodds-token-v1 is not a standard FT, using Allow mode
     await openContractCall({
         network: NETWORK,
         contractAddress,
@@ -121,7 +121,7 @@ export const buyOutcome = async (params: BuyParams) => {
         functionName,
         functionArgs: [
             uintCV(marketId),
-            uintCV(amount)
+            uintCV(amountMicro)
         ],
         postConditionMode: PostConditionMode.Allow,
         postConditions: [],
