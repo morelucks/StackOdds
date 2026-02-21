@@ -458,17 +458,29 @@ export function MarketCreationForm() {
                 </div>
 
                 <div className="pt-4">
-                    <Button
-                        type="submit"
-                        disabled={isCreatePending || !isStacksConnected}
-                        className="w-full text-base font-semibold h-12"
-                    >
-                        {!isStacksConnected
-                            ? "Connect Wallet to Create Market"
-                            : isCreatePending
+                    {!isStacksConnected ? (
+                        <Button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault()
+                                toast.info("Please connect your wallet first")
+                                connectWallet()
+                            }}
+                            className="w-full text-base font-semibold h-12"
+                        >
+                            Connect Wallet to Create Market
+                        </Button>
+                    ) : (
+                        <Button
+                            type="submit"
+                            disabled={isCreatePending}
+                            className="w-full text-base font-semibold h-12"
+                        >
+                            {isCreatePending
                                 ? (createStep || "Processing...")
                                 : "Create Market"}
-                    </Button>
+                        </Button>
+                    )}
                 </div>
 
                 {createHash && <div className="p-3 rounded bg-green-500/10 border border-green-500/20 text-xs text-green-400 break-all">Create Tx: {createHash}</div>}

@@ -20,11 +20,10 @@ interface TradingFormProps {
 
 export function TradingForm({ marketId, outcome, probability, isExpired = false }: TradingFormProps) {
     // TODO: Update to use Stacks wallet instead of EVM
-    const { isConnected: isStacksConnected } = useStacks()
+    const { isConnected: isStacksConnected, userData, connectWallet } = useStacks()
     const queryClient = useQueryClient()
 
     // For now, using Stacks wallet address
-    const { userData } = useStacks()
     const walletAddress = userData ? getStacksAddress(userData) : null
 
     const [amount, setAmount] = useState("")
@@ -160,15 +159,29 @@ export function TradingForm({ marketId, outcome, probability, isExpired = false 
                     <span className="text-green-400">+$0.00 (0%)</span>
                 </div> */}
 
-                    <Button
-                        className={`w-full h-10 md:h-12 font-bold text-sm md:text-base transition-all ${isAllowanceSufficient ? bgClass : "bg-emerald-600 text-white hover:bg-emerald-700"}`}
-                        onClick={!isStacksConnected ? undefined : (isAllowanceSufficient ? handleBuy : handleApprove)}
-                        disabled={isPending || (isStacksConnected && (!amount || parseFloat(amount) <= 0)) || !isStacksConnected}
-                        variant="default"
-                    >
-                        {isPending && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                        {buttonLabel}
-                    </Button>
+                    {!isStacksConnected ? (
+                        <Button
+                            className={`w-full h-10 md:h-12 font-bold text-sm md:text-base transition-all bg-emerald-600 text-white hover:bg-emerald-700`}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                toast.info("Please connect your Bitcoin wallet first");
+                                connectWallet();
+                            }}
+                            variant="default"
+                        >
+                            Connect Bitcoin Wallet to Trade
+                        </Button>
+                    ) : (
+                        <Button
+                            className={`w-full h-10 md:h-12 font-bold text-sm md:text-base transition-all ${isAllowanceSufficient ? bgClass : "bg-emerald-600 text-white hover:bg-emerald-700"}`}
+                            onClick={isAllowanceSufficient ? handleBuy : handleApprove}
+                            disabled={isPending || !amount || parseFloat(amount) <= 0}
+                            variant="default"
+                        >
+                            {isPending && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                            {buttonLabel}
+                        </Button>
+                    )}
                 </div>
             )}
 
