@@ -17,6 +17,10 @@ epoch = 2.1
 path = "contracts/pool-token.clar"
 epoch = 2.1
 
+[contracts.stackoddpoll]
+path = "contracts/stackoddpoll.clar"
+epoch = 2.1
+
 [repl.analysis]
 passes = ["check_checker"]
 check_checker = { trusted_sender = false, trusted_caller = false, callee_filter = false }
