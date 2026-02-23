@@ -1,6 +1,9 @@
 /**
  * Stacks transaction utilities for StackOdds.
  * Provides functions for contract calls with Post-Conditions.
+ * 
+ * Uses @stacks/connect for wallet interactions and transaction signing.
+ * Uses @stacks/transactions for Clarity value construction and post-conditions.
  */
 import { openContractCall } from '@stacks/connect';
 import {
