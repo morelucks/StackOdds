@@ -99,7 +99,16 @@ export function TradingForm({ marketId, outcome, probability, isExpired = false 
                 userAddress: walletAddress,
                 onFinish: (data: any) => {
                     setBuyHash(data.txId)
-                    toast.success(`Buy ${outcome} transaction broadcasted!`)
+                    toast.success(`Buy ${outcome} transaction broadcasted!`, {
+                        description: `Transaction ID: ${data.txId.slice(0, 8)}...${data.txId.slice(-8)}`,
+                        action: {
+                            label: 'View',
+                            onClick: () => window.open(
+                                `https://explorer.hiro.so/txid/${data.txId}${process.env.NEXT_PUBLIC_STACKS_NETWORK !== 'mainnet' ? '?chain=testnet' : ''}`,
+                                '_blank'
+                            ),
+                        },
+                    })
                     setAmount("")
                     queryClient.invalidateQueries({ queryKey: ['sharesBoughts', marketId] })
                     setIsBuyPending(false)
@@ -186,9 +195,19 @@ export function TradingForm({ marketId, outcome, probability, isExpired = false 
             )}
 
             {buyHash && (
-                <div className="p-3 rounded bg-blue-500/10 border border-blue-500/20 text-xs text-blue-200 break-all">
-                    <span className="font-semibold block mb-1">Transaction Sent:</span>
-                    {buyHash}
+                <div className="p-3 rounded bg-blue-500/10 border border-blue-500/20 text-xs break-all">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-blue-200">Transaction Sent</span>
+                        <a
+                            href={`https://explorer.hiro.so/txid/${buyHash}${process.env.NEXT_PUBLIC_STACKS_NETWORK !== 'mainnet' ? '?chain=testnet' : ''}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400 hover:text-blue-300 underline text-xs"
+                        >
+                            View on Explorer
+                        </a>
+                    </div>
+                    <code className="text-blue-300">{buyHash}</code>
                 </div>
             )}
         </div>
