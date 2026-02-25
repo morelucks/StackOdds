@@ -1,9 +1,6 @@
 /**
- * Stacks transaction utilities for StackOdds.
- * Provides functions for contract calls with Post-Conditions.
- * 
- * Uses @stacks/connect for wallet interactions and transaction signing.
- * Uses @stacks/transactions for Clarity value construction and post-conditions.
+ * Enhanced Stacks transaction utilities with post-conditions.
+ * Provides secure contract interactions with proper post-condition checks.
  */
 import { openContractCall } from '@stacks/connect';
 import {
@@ -12,7 +9,9 @@ import {
     stringAsciiCV,
     contractPrincipalCV,
     PostConditionMode,
-    Pc
+    makeStandardFungiblePostCondition,
+    FungibleConditionCode,
+    createAssetInfo,
 } from '@stacks/transactions';
 import { STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
 import { toMicroUnits, getUSDCxAddress, TOKEN_CONTRACT_ADDRESS } from './constants';
@@ -35,8 +34,7 @@ export interface CreateMarketParams {
 }
 
 /**
- * Creates a new prediction market on the Stacks blockchain.
- * @param params Creation parameters including liquidity and market details.
+ * Creates a new prediction market with post-conditions for security.
  */
 export const createMarket = async (params: CreateMarketParams) => {
     const {
@@ -55,7 +53,18 @@ export const createMarket = async (params: CreateMarketParams) => {
     } = params;
 
     const liquidityMicro = toMicroUnits(liquidity);
-    const [tokenAddr, tokenName] = `${tokenAddress}.${tokenContractName}`.split('.');
+    const usdcxAddress = getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet');
+    const [usdcxAddr, usdcxName] = usdcxAddress.split('.');
+
+    // Post-condition: User must transfer exact liquidity amount
+    const postConditions = [
+        makeStandardFungiblePostCondition(
+            userAddress,
+            FungibleConditionCode.Equal,
+            liquidityMicro,
+            createAssetInfo(usdcxAddr, usdcxName, 'usdcx')
+        ),
+    ];
 
     await openContractCall({
         network: NETWORK,
@@ -68,17 +77,17 @@ export const createMarket = async (params: CreateMarketParams) => {
             uintCV(endTime),
             stringAsciiCV(question),
             stringAsciiCV(metadataCid),
-            contractPrincipalCV(getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[0], getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[1]),
+            contractPrincipalCV(usdcxAddr, usdcxName),
             contractPrincipalCV(TOKEN_CONTRACT_ADDRESS.split('.')[0], TOKEN_CONTRACT_ADDRESS.split('.')[1])
         ],
-        postConditionMode: PostConditionMode.Allow,
-        postConditions: [],
+        postConditionMode: PostConditionMode.Deny,
+        postConditions,
         onFinish: (data) => {
-            console.log('Transaction broadcasted:', data.txId);
+            console.log('Market created:', data.txId);
             if (onFinish) onFinish(data);
         },
         onCancel: () => {
-            console.log('Transaction cancelled');
+            console.log('Market creation cancelled');
             if (onCancel) onCancel();
         }
     });
@@ -98,8 +107,7 @@ export interface BuyParams {
 }
 
 /**
- * Purchases YES or NO outcome shares for a specific market.
- * @param params Buy parameters including the amount of USDCx to spend.
+ * Purchases outcome shares with post-conditions.
  */
 export const buyOutcome = async (params: BuyParams) => {
     const {
@@ -108,8 +116,6 @@ export const buyOutcome = async (params: BuyParams) => {
         marketId,
         amount,
         outcome,
-        tokenAddress,
-        tokenContractName,
         userAddress,
         onFinish,
         onCancel
@@ -117,6 +123,18 @@ export const buyOutcome = async (params: BuyParams) => {
 
     const functionName = outcome === 'YES' ? 'buy-yes' : 'buy-no';
     const amountMicro = toMicroUnits(amount);
+    const usdcxAddress = getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet');
+    const [usdcxAddr, usdcxName] = usdcxAddress.split('.');
+
+    // Post-condition: User must transfer exact amount
+    const postConditions = [
+        makeStandardFungiblePostCondition(
+            userAddress,
+            FungibleConditionCode.Equal,
+            amountMicro,
+            createAssetInfo(usdcxAddr, usdcxName, 'usdcx')
+        ),
+    ];
 
     await openContractCall({
         network: NETWORK,
@@ -126,17 +144,17 @@ export const buyOutcome = async (params: BuyParams) => {
         functionArgs: [
             uintCV(marketId),
             uintCV(amountMicro),
-            contractPrincipalCV(getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[0], getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[1]),
+            contractPrincipalCV(usdcxAddr, usdcxName),
             contractPrincipalCV(TOKEN_CONTRACT_ADDRESS.split('.')[0], TOKEN_CONTRACT_ADDRESS.split('.')[1])
         ],
-        postConditionMode: PostConditionMode.Allow,
-        postConditions: [],
+        postConditionMode: PostConditionMode.Deny,
+        postConditions,
         onFinish: (data) => {
-            console.log(`Buy ${outcome} transaction broadcasted:`, data.txId);
+            console.log(`Buy ${outcome} completed:`, data.txId);
             if (onFinish) onFinish(data);
         },
         onCancel: () => {
-            console.log('Transaction cancelled');
+            console.log('Buy cancelled');
             if (onCancel) onCancel();
         }
     });
@@ -152,8 +170,7 @@ export interface ResolveParams {
 }
 
 /**
- * Resolves a prediction market outcome.
- * Only callable by authorized contract owners/moderators.
+ * Resolves a market outcome (admin only).
  */
 export const resolveMarket = async (params: ResolveParams) => {
     const {
@@ -177,7 +194,7 @@ export const resolveMarket = async (params: ResolveParams) => {
         postConditionMode: PostConditionMode.Deny,
         postConditions: [],
         onFinish: (data) => {
-            console.log('Market resolution transaction broadcasted:', data.txId);
+            console.log('Market resolved:', data.txId);
             if (onFinish) onFinish(data);
         },
         onCancel: () => {
@@ -196,8 +213,7 @@ export interface ClaimParams {
 }
 
 /**
- * Claims winnings for a resolved prediction market.
- * Burns shares and transfers collateral back to the user.
+ * Claims winnings from a resolved market.
  */
 export const claimWinnings = async (params: ClaimParams) => {
     const {
@@ -208,6 +224,9 @@ export const claimWinnings = async (params: ClaimParams) => {
         onCancel
     } = params;
 
+    const usdcxAddress = getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet');
+    const [usdcxAddr, usdcxName] = usdcxAddress.split('.');
+
     await openContractCall({
         network: NETWORK,
         contractAddress,
@@ -215,13 +234,13 @@ export const claimWinnings = async (params: ClaimParams) => {
         functionName: 'claim',
         functionArgs: [
             uintCV(marketId),
-            contractPrincipalCV(getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[0], getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet').split('.')[1]),
+            contractPrincipalCV(usdcxAddr, usdcxName),
             contractPrincipalCV(TOKEN_CONTRACT_ADDRESS.split('.')[0], TOKEN_CONTRACT_ADDRESS.split('.')[1])
         ],
         postConditionMode: PostConditionMode.Deny,
         postConditions: [],
         onFinish: (data) => {
-            console.log('Claim transaction broadcasted:', data.txId);
+            console.log('Claim completed:', data.txId);
             if (onFinish) onFinish(data);
         },
         onCancel: () => {

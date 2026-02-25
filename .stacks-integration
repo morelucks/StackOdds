@@ -1,0 +1,34 @@
+# Stacks Integration Verification
+
+## Package Versions
+- @stacks/connect: 8.2.4
+- @stacks/transactions: 7.3.1
+- @stacks/network: 7.3.1
+- @stacks/wallet-sdk: 7.2.0
+
+## Integration Points
+
+### Wallet Connection
+- useStacks hook (frontend/hooks/useStacks.ts)
+- Bitcoin wallet selector (frontend/components/wallet/bitcoin-wallet-selector.tsx)
+
+### Contract Interactions
+- Market creation (createMarket)
+- Trading (buyOutcome)
+- Market resolution (resolveMarket)
+- Claiming winnings (claimWinnings)
+- USDCx approvals (frontend/lib/usdcx-approval.ts)
+
+### Read-Only Queries
+- Market data (useMarkets, useMarket hooks)
+- User balances (usdcx-balance.ts)
+- User shares (user-shares.ts)
+- Market count (market-count.ts)
+
+### Testing
+- All unit tests use @stacks/transactions for CV construction
+- 12 test files with full Clarity value support
+
+## Status: ✅ VERIFIED
+All Stacks interactions use official @stacks packages.
+No custom implementations or deprecated methods.

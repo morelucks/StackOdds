@@ -25,7 +25,8 @@ StackOdds is a next-generation prediction market platform built on the Stacks bl
  
 ## 🚀 Key Features
 
-- **LMSR Pricing**: Advanced market-making algorithm ensures continuous liquidity 
+- **LMSR Pricing**: Advanced market-making algorithm ensures continuous liquidity
+- **Stacks Integration**: Built with @stacks/connect and @stacks/transactions for seamless wallet and contract interactions 
 ## 📊 Market Opportunity
 
 ### Market Size
