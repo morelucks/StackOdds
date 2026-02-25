@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/co
 import { useUserRights } from "@/hooks/useUserRights"
 import { useStacks } from "@/hooks/useStacks"
 import { BitcoinWalletSelector } from "@/components/wallet/bitcoin-wallet-selector"
+import { WalletBalance } from "@/components/wallet/wallet-balance"
 import { formatAddress, getStacksAddress } from "@/lib/wallet-utils"
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
@@ -83,6 +84,9 @@ export default function Header() {
 
           {/* Bitcoin Wallet Connect/Disconnect */}
           <div className="hidden sm:flex items-center gap-2">
+            {isStacksConnected && stacksAddress && (
+              <WalletBalance address={stacksAddress} />
+            )}
             <BitcoinWalletSelector
               userSession={userSession}
               onConnect={connectWallet}

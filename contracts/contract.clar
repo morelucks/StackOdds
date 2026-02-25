@@ -216,7 +216,7 @@
             (asserts! is-auth ERR_UNAUTHORIZED)
             (asserts! (> b u0) ERR_ZERO_LIQUIDITY)
             (asserts! (> end-time start-time) ERR_INVALID_PARAMS)
-            (asserts! (>= start-time block-height) ERR_INVALID_PARAMS)
+            (asserts! (if (> start-time u10000000) (>= start-time burn-block-timestamp) (>= start-time block-height)) ERR_INVALID_PARAMS)
             (asserts! (is-eq (contract-of collateral-trait) (var-get collateral-token)) ERR_INVALID_PARAMS)
             (asserts! (is-eq (contract-of outcome-contract) (var-get outcome-token-contract)) ERR_INVALID_PARAMS)
             (let
@@ -228,7 +228,8 @@
                     ;; Required initial deposit equals b multiplied by natural log of 2
                     ;; Precomputed constant: ln(2) approximately equals 693147 in our fixed-point scale
                     (ln2 u693147)
-                    (fund-amount (/ (* b-internal ln2) u1000000))
+                    ;; FIX: Scale fund-amount correctly for the collateral token (6 decimals if b is in micro-units)
+                    (fund-amount (/ (* b ln2) u1000000))
                 )
                 (begin
                     ;; Collect the initial liquidity deposit
@@ -279,7 +280,7 @@
         (begin
             (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
             (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
-            (asserts! (<= block-height (get end-time market)) ERR_MARKET_EXPIRED)
+            (asserts! (not (if (> (get end-time market) u10000000) (>= burn-block-timestamp (get end-time market)) (>= block-height (get end-time market)))) ERR_MARKET_EXPIRED)
             (let
                 (
                     (initial-cost (try! (cost market-id)))
@@ -355,7 +356,7 @@
             (asserts! is-auth ERR_UNAUTHORIZED)
             (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
             (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
-            (asserts! (>= block-height (get end-time market)) ERR_MARKET_NOT_EXPIRED)
+            (asserts! (if (> (get end-time market) u10000000) (>= burn-block-timestamp (get end-time market)) (>= block-height (get end-time market))) ERR_MARKET_NOT_EXPIRED)
             (map-set markets market-id
                 {
                     exists: true,

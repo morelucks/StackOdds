@@ -215,7 +215,16 @@ export function MarketCreationForm() {
                 onFinish: (data) => {
                     setCreateHash(data.txId)
                     toast.dismiss(createToast);
-                    toast.success("🎉 Market creation transaction broadcasted!")
+                    toast.success("🎉 Market creation transaction broadcasted!", {
+                        description: `Transaction ID: ${data.txId.slice(0, 8)}...${data.txId.slice(-8)}`,
+                        action: {
+                            label: 'View',
+                            onClick: () => window.open(
+                                `https://explorer.hiro.so/txid/${data.txId}${process.env.NEXT_PUBLIC_STACKS_NETWORK !== 'mainnet' ? '?chain=testnet' : ''}`,
+                                '_blank'
+                            ),
+                        },
+                    })
                     setIsCreatePending(false)
                     setCreateStep("")
 

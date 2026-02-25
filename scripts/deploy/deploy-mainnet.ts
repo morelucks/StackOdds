@@ -158,7 +158,7 @@ async function deployContract(contractName: string, contractSource: string) {
 
   // Use unique names to avoid resolution/caching issues
   // The name stackodds-token-v1 is critical because contract.clar references .stackodds-token-v1
-  const deployContractName = contractName === 'token' ? 'stackodds-token-v1' : 'stackodds-market-v3';
+  const deployContractName = contractName === 'token' ? 'stackodds-token-v5' : 'stackodds-market-v3';
   const deploySource = contractSource;
 
   const txOptions = {
@@ -268,7 +268,16 @@ async function main() {
     }
 
     // Deploy main contract
-    const contractTxId = await deployContract('market', contractContract);
+    let contractTxId: string | null = null;
+    try {
+      contractTxId = await deployContract('market', contractContract);
+    } catch (error: any) {
+      if (error.message?.includes('ContractAlreadyExists') || error.message?.includes('already exists')) {
+        console.log('⚠️  Market contract already deployed, skipping...');
+      } else {
+        throw error;
+      }
+    }
 
     console.log('\n' + '='.repeat(50));
     console.log('✅ Deployment complete!');
