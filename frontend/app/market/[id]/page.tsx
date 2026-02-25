@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MarketDetailSkeleton } from "@/components/skeletons/market-detail-skeleton"
 import { MarketChart } from "@/components/market/market-chart"
 import { MarketStatus } from "@/components/market/market-status"
+import { ErrorBoundary } from "@/components/common/error-boundary"
 
 export default function EventPage() {
     const params = useParams()
@@ -72,7 +73,8 @@ export default function EventPage() {
         <div className="min-h-screen bg-background">
             <Header />
 
-            <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 md:py-8">
+            <ErrorBoundary>
+                <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 md:py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
                     {/* Left Column: Market Info (8 cols) */}
@@ -199,6 +201,7 @@ export default function EventPage() {
 
                 </div>
             </main>
+            </ErrorBoundary>
         </div>
     )
 }

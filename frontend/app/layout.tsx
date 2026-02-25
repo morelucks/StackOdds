@@ -5,6 +5,7 @@ import "./globals.css"
 import { Providers } from "@/components/providers/providers"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { Footer } from "@/components/layout/footer"
+import { ErrorBoundary } from "@/components/common/error-boundary"
 
 export const metadata: Metadata = {
   title: "StackOdds | The World's Largest Prediction Market",
@@ -36,11 +37,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased pb-24 md:pb-0`}>
-        <Providers>
-          {children}
-          <Footer />
-          <BottomNav />
-        </Providers>
+        <ErrorBoundary>
+          <Providers>
+            {children}
+            <Footer />
+            <BottomNav />
+          </Providers>
+        </ErrorBoundary>
         <Analytics />
       </body>
     </html>
