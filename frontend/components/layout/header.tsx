@@ -9,6 +9,7 @@ import { useUserRights } from "@/hooks/useUserRights"
 import { useStacks } from "@/hooks/useStacks"
 import { BitcoinWalletSelector } from "@/components/wallet/bitcoin-wallet-selector"
 import { WalletBalance } from "@/components/wallet/wallet-balance"
+import { NetworkIndicator } from "@/components/wallet/network-indicator"
 import { formatAddress, getStacksAddress } from "@/lib/wallet-utils"
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
@@ -69,6 +70,7 @@ export default function Header() {
 
         {/* Right Side Actions */}
         <div className="ml-auto flex items-center gap-2 md:gap-4">
+          <NetworkIndicator />
           <ThemeToggle className="h-8 w-8 md:h-9 md:w-9" />
 
           {mounted && (
