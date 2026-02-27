@@ -216,7 +216,7 @@
             (asserts! is-auth ERR_UNAUTHORIZED)
             (asserts! (> b u0) ERR_ZERO_LIQUIDITY)
             (asserts! (> end-time start-time) ERR_INVALID_PARAMS)
-            (asserts! (if (> start-time u10000000) (>= start-time stacks-block-height) (>= start-time block-height)) ERR_INVALID_PARAMS)
+            (asserts! (>= start-time block-height) ERR_INVALID_PARAMS)
             (asserts! (is-eq (contract-of collateral-trait) (var-get collateral-token)) ERR_INVALID_PARAMS)
             (asserts! (is-eq (contract-of outcome-contract) (var-get outcome-token-contract)) ERR_INVALID_PARAMS)
             (let
