@@ -1,22 +1,23 @@
 /**
  * Enhanced Stacks transaction utilities with post-conditions.
  * Provides secure contract interactions with proper post-condition checks.
+ * Uses @stacks/connect for wallet interactions and @stacks/transactions for Clarity values.
  */
 import { openContractCall } from '@stacks/connect';
-import {
-    uintCV,
-    boolCV,
-    stringAsciiCV,
-    contractPrincipalCV,
-    PostConditionMode,
-    makeStandardFungiblePostCondition,
-    FungibleConditionCode,
-    createAssetInfo,
-} from '@stacks/transactions';
-import { STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
-import { toMicroUnits, getUSDCxAddress, TOKEN_CONTRACT_ADDRESS } from './constants';
-
-const NETWORK = process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet' ? STACKS_MAINNET : STACKS_TESTNET;
+import { PostConditionMode } from '@stacks/transactions';
+import { getStacksNetwork } from './stacks-network';
+import { 
+    createUintCV, 
+    createBoolCV, 
+    createStringAsciiCV, 
+    createContractPrincipalCV,
+    toMicroUSDCx 
+} from './stacks-clarity-values';
+import { 
+    createUSDCxPostCondition, 
+    PostConditionCodes 
+} from './stacks-post-conditions';
+import { getUSDCxAddress, TOKEN_CONTRACT_ADDRESS } from './constants';
 
 export interface CreateMarketParams {
     contractAddress: string;
@@ -52,33 +53,33 @@ export const createMarket = async (params: CreateMarketParams) => {
         onCancel
     } = params;
 
-    const liquidityMicro = toMicroUnits(liquidity);
+    const liquidityMicro = toMicroUSDCx(liquidity);
     const usdcxAddress = getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet');
     const [usdcxAddr, usdcxName] = usdcxAddress.split('.');
 
     // Post-condition: User must transfer exact liquidity amount
     const postConditions = [
-        makeStandardFungiblePostCondition(
+        createUSDCxPostCondition(
             userAddress,
-            FungibleConditionCode.Equal,
             liquidityMicro,
-            createAssetInfo(usdcxAddr, usdcxName, 'usdcx')
+            usdcxAddress,
+            PostConditionCodes.Equal
         ),
     ];
 
     await openContractCall({
-        network: NETWORK,
+        network: getStacksNetwork(),
         contractAddress,
         contractName,
         functionName: 'create-market',
         functionArgs: [
-            uintCV(liquidityMicro),
-            uintCV(startTime),
-            uintCV(endTime),
-            stringAsciiCV(question),
-            stringAsciiCV(metadataCid),
-            contractPrincipalCV(usdcxAddr, usdcxName),
-            contractPrincipalCV(TOKEN_CONTRACT_ADDRESS.split('.')[0], TOKEN_CONTRACT_ADDRESS.split('.')[1])
+            createUintCV(liquidityMicro),
+            createUintCV(startTime),
+            createUintCV(endTime),
+            createStringAsciiCV(question),
+            createStringAsciiCV(metadataCid),
+            createContractPrincipalCV(`${usdcxAddr}.${usdcxName}`),
+            createContractPrincipalCV(TOKEN_CONTRACT_ADDRESS)
         ],
         postConditionMode: PostConditionMode.Deny,
         postConditions,
@@ -122,30 +123,30 @@ export const buyOutcome = async (params: BuyParams) => {
     } = params;
 
     const functionName = outcome === 'YES' ? 'buy-yes' : 'buy-no';
-    const amountMicro = toMicroUnits(amount);
+    const amountMicro = toMicroUSDCx(amount);
     const usdcxAddress = getUSDCxAddress(process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet');
     const [usdcxAddr, usdcxName] = usdcxAddress.split('.');
 
     // Post-condition: User must transfer exact amount
     const postConditions = [
-        makeStandardFungiblePostCondition(
+        createUSDCxPostCondition(
             userAddress,
-            FungibleConditionCode.Equal,
             amountMicro,
-            createAssetInfo(usdcxAddr, usdcxName, 'usdcx')
+            usdcxAddress,
+            PostConditionCodes.Equal
         ),
     ];
 
     await openContractCall({
-        network: NETWORK,
+        network: getStacksNetwork(),
         contractAddress,
         contractName,
         functionName,
         functionArgs: [
-            uintCV(marketId),
-            uintCV(amountMicro),
-            contractPrincipalCV(usdcxAddr, usdcxName),
-            contractPrincipalCV(TOKEN_CONTRACT_ADDRESS.split('.')[0], TOKEN_CONTRACT_ADDRESS.split('.')[1])
+            createUintCV(marketId),
+            createUintCV(amountMicro),
+            createContractPrincipalCV(`${usdcxAddr}.${usdcxName}`),
+            createContractPrincipalCV(TOKEN_CONTRACT_ADDRESS)
         ],
         postConditionMode: PostConditionMode.Deny,
         postConditions,
@@ -183,13 +184,13 @@ export const resolveMarket = async (params: ResolveParams) => {
     } = params;
 
     await openContractCall({
-        network: NETWORK,
+        network: getStacksNetwork(),
         contractAddress,
         contractName,
         functionName: 'resolve-market',
         functionArgs: [
-            uintCV(marketId),
-            boolCV(yesWon)
+            createUintCV(marketId),
+            createBoolCV(yesWon)
         ],
         postConditionMode: PostConditionMode.Deny,
         postConditions: [],
@@ -228,14 +229,14 @@ export const claimWinnings = async (params: ClaimParams) => {
     const [usdcxAddr, usdcxName] = usdcxAddress.split('.');
 
     await openContractCall({
-        network: NETWORK,
+        network: getStacksNetwork(),
         contractAddress,
         contractName,
         functionName: 'claim',
         functionArgs: [
-            uintCV(marketId),
-            contractPrincipalCV(usdcxAddr, usdcxName),
-            contractPrincipalCV(TOKEN_CONTRACT_ADDRESS.split('.')[0], TOKEN_CONTRACT_ADDRESS.split('.')[1])
+            createUintCV(marketId),
+            createContractPrincipalCV(`${usdcxAddr}.${usdcxName}`),
+            createContractPrincipalCV(TOKEN_CONTRACT_ADDRESS)
         ],
         postConditionMode: PostConditionMode.Deny,
         postConditions: [],
