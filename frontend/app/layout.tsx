@@ -26,6 +26,9 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-icon.png",
   },
+  other: {
+    "talentapp:project_verification": "a976751c9979f2970e0e58cbbd230bb55b1043dab1e9e5940c52abf032dbc1e12a0587ac4dced8739e8e16c23000ad35b58564b350ec4bc06d19b0b493a58f96",
+  },
 }
 
 export default function RootLayout({
