@@ -216,7 +216,7 @@
             (asserts! is-auth ERR_UNAUTHORIZED)
             (asserts! (> b u0) ERR_ZERO_LIQUIDITY)
             (asserts! (> end-time start-time) ERR_INVALID_PARAMS)
-            (asserts! (if (> start-time u10000000) (>= start-time burn-block-timestamp) (>= start-time block-height)) ERR_INVALID_PARAMS)
+            (asserts! (>= start-time block-height) ERR_INVALID_PARAMS)
             (asserts! (is-eq (contract-of collateral-trait) (var-get collateral-token)) ERR_INVALID_PARAMS)
             (asserts! (is-eq (contract-of outcome-contract) (var-get outcome-token-contract)) ERR_INVALID_PARAMS)
             (let
@@ -280,7 +280,7 @@
         (begin
             (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
             (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
-            (asserts! (not (if (> (get end-time market) u10000000) (>= burn-block-timestamp (get end-time market)) (>= block-height (get end-time market)))) ERR_MARKET_EXPIRED)
+            (asserts! (not (>= block-height (get end-time market))) ERR_MARKET_EXPIRED)
             (let
                 (
                     (initial-cost (try! (cost market-id)))
@@ -356,7 +356,7 @@
             (asserts! is-auth ERR_UNAUTHORIZED)
             (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
             (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
-            (asserts! (if (> (get end-time market) u10000000) (>= burn-block-timestamp (get end-time market)) (>= block-height (get end-time market))) ERR_MARKET_NOT_EXPIRED)
+            (asserts! (>= block-height (get end-time market)) ERR_MARKET_NOT_EXPIRED)
             (map-set markets market-id
                 {
                     exists: true,
