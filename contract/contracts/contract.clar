@@ -221,29 +221,25 @@
     (let
         (
             (caller tx-sender)
-            (is-auth (unwrap-panic (is-authorized caller)))
         )
-        (asserts! is-auth ERR_UNAUTHORIZED)
+        (asserts! (is-authorized-caller caller) ERR_UNAUTHORIZED)
         (asserts! (> b u0) ERR_ZERO_LIQUIDITY)
         (asserts! (> end-time start-time) ERR_INVALID_PARAMS)
-        (asserts! (is-eq (contract-of collateral-trait) (var-get collateral-token)) ERR_INVALID_PARAMS)
-        (asserts! (is-eq (contract-of outcome-contract) (var-get outcome-token-contract)) ERR_INVALID_PARAMS)
+        (try! (validate-traits collateral-trait outcome-contract))
         
         (let
             (
                 (market-id (+ (var-get market-count) u1))
-                (b-internal (* b u1000000000000))
-                (fund-amount (/ (* b LN2) u1000000)) ;; Initial liquidity required (b * ln(2))
+                (b-internal (* b SCALING_FACTOR))
+                (fund-amount (/ (* b LN2) PRECISION)) ;; Initial liquidity required (b * ln(2))
                 (token-id-yes (+ (* market-id u2) u1))
                 (token-id-no (* market-id u2))
-                (name-yes "Market YES")
-                (name-no "Market NO")
             )
             ;; Collect the initial liquidity deposit
             (try! (contract-call? collateral-trait transfer fund-amount caller (as-contract tx-sender) none))
             
             ;; Register Outcome Tokens
-            (try! (contract-call? outcome-contract initialize-token market-id token-id-yes token-id-no name-yes name-no "YES" "NO"))
+            (try! (contract-call? outcome-contract initialize-token market-id token-id-yes token-id-no "Market YES" "Market NO" "YES" "NO"))
             
             ;; Save Market Data
             (map-set markets market-id
