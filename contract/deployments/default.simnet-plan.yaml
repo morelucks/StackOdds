@@ -69,16 +69,6 @@ plan:
             path: contracts/contract.clar
             clarity-version: 2
         - emulated-contract-publish:
-            contract-name: pool-token
-            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/pool-token.clar
-            clarity-version: 2
-        - emulated-contract-publish:
-            contract-name: stackoddpoll
-            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/stackoddpoll.clar
-            clarity-version: 2
-        - emulated-contract-publish:
             contract-name: token
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: contracts/token.clar
