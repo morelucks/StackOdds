@@ -272,35 +272,26 @@
     (let
         (
             (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
-            (initial-cost (try! (cost market-id)))
-            (amount-internal (* amount u1000000000000))
+            (initial-cost (calculate-cost (get b market) (get q-yes market) (get q-no market)))
+            (amount-internal (* amount SCALING_FACTOR))
             (new-q-yes (if is-yes (+ (get q-yes market) amount-internal) (get q-yes market)))
             (new-q-no (if is-yes (get q-no market) (+ (get q-no market) amount-internal)))
             (new-cost (calculate-cost (get b market) new-q-yes new-q-no))
-            (collateral-required (/ (- new-cost initial-cost) u1000000000000))
+            (collateral-required (/ (- new-cost initial-cost) SCALING_FACTOR))
             (token-id (if is-yes (get token-id-yes market) (get token-id-no market)))
         )
-        (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
         (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
-        
-        ;; Note: We leave checking elapsed time flexible for test environments, 
-        ;; but generally you can uncomment expiration checks:
-        ;; (asserts! (< block-height (get end-time market)) ERR_MARKET_EXPIRED)
-
         (asserts! (> collateral-required u0) ERR_INVALID_PARAMS)
         
         ;; Collect Payment
         (try! (contract-call? collateral-trait transfer collateral-required tx-sender (as-contract tx-sender) none))
         
         ;; Update Market Quantities
-        (map-set markets market-id
-            (merge market { q-yes: new-q-yes, q-no: new-q-no })
-        )
+        (map-set markets market-id (merge market { q-yes: new-q-yes, q-no: new-q-no }))
         
         ;; Issue Shares
         (try! (contract-call? outcome-contract mint token-id tx-sender amount))
         
-        ;; Print Event
         (print {event: "shares-bought", market-id: market-id, buyer: tx-sender, is-yes: is-yes, amount: amount, cost: collateral-required})
         (ok collateral-required)
     )
