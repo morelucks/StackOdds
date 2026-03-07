@@ -154,6 +154,7 @@
     )
 )
 
+;; Calculates the cost of a trade using the LMSR pricing model
 (define-read-only (calculate-cost (b uint) (q-yes uint) (q-no uint))
     (let
         (
@@ -191,6 +192,7 @@
 ;; =====================================================================
 ;; Read-Only View Functions
 ;; =====================================================================
+;; Returns a summary of the market state
 (define-read-only (get-market-summary (id uint))
     (let ((m (unwrap! (map-get? markets id) ERR_MARKET_NOT_CREATED)))
         (ok {
@@ -208,6 +210,7 @@
     )
 )
 
+;; Returns the total number of markets created
 (define-read-only (get-market-count)
     (ok (var-get market-count))
 )
