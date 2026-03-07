@@ -299,16 +299,14 @@
 
 (define-public (buy-yes (market-id uint) (amount uint) (collateral-trait <sip-010-trait>) (outcome-contract <outcome-trait>))
     (begin
-        (asserts! (is-eq (contract-of collateral-trait) (var-get collateral-token)) ERR_INVALID_PARAMS)
-        (asserts! (is-eq (contract-of outcome-contract) (var-get outcome-token-contract)) ERR_INVALID_PARAMS)
+        (try! (validate-traits collateral-trait outcome-contract))
         (buy-shares market-id amount true collateral-trait outcome-contract)
     )
 )
 
 (define-public (buy-no (market-id uint) (amount uint) (collateral-trait <sip-010-trait>) (outcome-contract <outcome-trait>))
     (begin
-        (asserts! (is-eq (contract-of collateral-trait) (var-get collateral-token)) ERR_INVALID_PARAMS)
-        (asserts! (is-eq (contract-of outcome-contract) (var-get outcome-token-contract)) ERR_INVALID_PARAMS)
+        (try! (validate-traits collateral-trait outcome-contract))
         (buy-shares market-id amount false collateral-trait outcome-contract)
     )
 )
