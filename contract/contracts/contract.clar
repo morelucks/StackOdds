@@ -315,19 +315,13 @@
 (define-public (resolve-market (market-id uint) (yes-won bool))
     (let
         (
-            (caller tx-sender)
-            (is-auth (unwrap-panic (is-authorized caller)))
             (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
         )
-        (asserts! is-auth ERR_UNAUTHORIZED)
-        (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
+        (asserts! (is-authorized-caller tx-sender) ERR_UNAUTHORIZED)
         (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
         
-        (map-set markets market-id
-            (merge market { resolved: true, yes-won: yes-won })
-        )
+        (map-set markets market-id (merge market { resolved: true, yes-won: yes-won }))
         
-        ;; Print Event
         (print {event: "market-resolved", market-id: market-id, yes-won: yes-won})
         (ok true)
     )
