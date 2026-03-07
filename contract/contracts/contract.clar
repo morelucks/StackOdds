@@ -100,6 +100,14 @@
     )
 )
 
+(define-private (validate-traits (collateral-trait <sip-010-trait>) (outcome-contract <outcome-trait>))
+    (begin
+        (asserts! (is-eq (contract-of collateral-trait) (var-get collateral-token)) ERR_INVALID_TRAIT)
+        (asserts! (is-eq (contract-of outcome-contract) (var-get outcome-token-contract)) ERR_INVALID_TRAIT)
+        (ok true)
+    )
+)
+
 (define-public (set-admin-role (account principal) (enabled bool))
     (begin
         (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
@@ -154,7 +162,7 @@
             (sum-exp (+ exp-yes exp-no))
             (ln-sum (ln-approx sum-exp))
         )
-        (/ (* b ln-sum) u1000000)
+        (/ (* b ln-sum) PRECISION)
     )
 )
 
