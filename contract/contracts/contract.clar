@@ -191,26 +191,21 @@
 ;; =====================================================================
 ;; Read-Only View Functions
 ;; =====================================================================
-(define-read-only (cost (market-id uint))
-    (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
-        (ok (calculate-cost (get b market) (get q-yes market) (get q-no market)))
+(define-read-only (get-market-summary (id uint))
+    (let ((m (unwrap! (map-get? markets id) ERR_MARKET_NOT_CREATED)))
+        (ok {
+            exists: (get exists m),
+            b: (get b m),
+            q-yes: (get q-yes m),
+            q-no: (get q-no m),
+            price-yes: (calculate-price-yes (get b m) (get q-yes m) (get q-no m)),
+            price-no: (calculate-price-no (get b m) (get q-yes m) (get q-no m)),
+            resolved: (get resolved m),
+            yes-won: (get yes-won m),
+            question: (get question m),
+            end-time: (get end-time m)
+        })
     )
-)
-
-(define-read-only (price-yes (market-id uint))
-    (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
-        (ok (calculate-price-yes (get b market) (get q-yes market) (get q-no market)))
-    )
-)
-
-(define-read-only (price-no (market-id uint))
-    (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
-        (ok (calculate-price-no (get b market) (get q-yes market) (get q-no market)))
-    )
-)
-
-(define-read-only (get-market (market-id uint))
-    (ok (map-get? markets market-id))
 )
 
 (define-read-only (get-market-count)
