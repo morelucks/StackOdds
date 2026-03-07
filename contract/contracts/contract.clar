@@ -332,14 +332,11 @@
     (let
         (
             (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
-            (winning-outcome (if (get yes-won market) u1 u0))
             (token-id (if (get yes-won market) (get token-id-yes market) (get token-id-no market)))
             (winning-shares (try! (contract-call? outcome-contract get-balance token-id tx-sender)))
         )
-        (asserts! (get exists market) ERR_MARKET_NOT_CREATED)
+        (try! (validate-traits collateral-trait outcome-contract))
         (asserts! (get resolved market) ERR_NOT_RESOLVED)
-        (asserts! (is-eq (contract-of collateral-trait) (var-get collateral-token)) ERR_INVALID_PARAMS)
-        (asserts! (is-eq (contract-of outcome-contract) (var-get outcome-token-contract)) ERR_INVALID_PARAMS)
         (asserts! (> winning-shares u0) ERR_INSUFFICIENT_SHARES)
         
         ;; Burn shares
@@ -348,7 +345,6 @@
         ;; Payout collateral
         (try! (contract-call? collateral-trait transfer winning-shares (as-contract tx-sender) tx-sender none))
         
-        ;; Print Event
         (print {event: "winnings-claimed", market-id: market-id, user: tx-sender, amount: winning-shares})
         (ok winning-shares)
     )
