@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Cl } from "@stacks/transactions";
 
 const accounts = simnet.getAccounts();
@@ -7,6 +7,30 @@ const user1 = accounts.get("wallet_1")!;
 const user2 = accounts.get("wallet_2")!;
 
 describe("Security & Compliance Tests", () => {
+  const ensureMarket = () => {
+    const countResult = simnet.callReadOnlyFn("contract", "get-market-count", [], deployer);
+    const count = Number((countResult.result as any).value.value);
+    if (count === 0) {
+      const currentBlock = simnet.blockHeight;
+      simnet.callPublicFn(
+        "contract",
+        "create-market",
+        [
+          Cl.uint(1000),
+          Cl.uint(currentBlock + 10),
+          Cl.uint(currentBlock + 100),
+          Cl.stringAscii("Compliance market"),
+          Cl.stringAscii("comp-1")
+        ],
+        deployer
+      );
+    }
+  };
+
+  beforeEach(() => {
+    ensureMarket();
+  });
+
   it("should blacklist user successfully", () => {
     const { result } = simnet.callPublicFn(
       "contract",
