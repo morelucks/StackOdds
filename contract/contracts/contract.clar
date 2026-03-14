@@ -153,6 +153,66 @@
 )
 
 ;; =====================================================================
+;; Compliance & Pause Controls
+;; =====================================================================
+(define-public (set-emergency-pause (paused bool))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+        (var-set emergency-paused paused)
+        (ok true)
+    )
+)
+
+(define-public (set-market-pause (market-id uint) (paused bool))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+        (map-set market-paused market-id paused)
+        (ok true)
+    )
+)
+
+(define-public (set-blacklist (account principal) (enabled bool))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+        (map-set blacklist account enabled)
+        (ok true)
+    )
+)
+
+(define-public (set-whitelist-enabled (enabled bool))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+        (var-set whitelist-enabled enabled)
+        (ok true)
+    )
+)
+
+(define-public (set-whitelist (account principal) (enabled bool))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+        (map-set whitelist account enabled)
+        (ok true)
+    )
+)
+
+(define-public (set-geo-restriction (country (string-ascii 2)) (enabled bool))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+        (map-set geo-restricted country enabled)
+        (ok true)
+    )
+)
+
+(define-public (is-user-compliant (account principal) (country (string-ascii 2)))
+    (begin
+        (asserts! (not (default-to false (map-get? blacklist account))) ERR_BLACKLISTED)
+        (asserts! (not (default-to false (map-get? geo-restricted country))) ERR_GEO_RESTRICTED)
+        (asserts! (or (not (var-get whitelist-enabled)) (default-to false (map-get? whitelist account))) ERR_NOT_WHITELISTED)
+        (ok true)
+    )
+)
+
+;; =====================================================================
 ;; Math Helpers (LMSR Polynomial Expansion)
 ;; =====================================================================
 (define-read-only (exp-approx (x uint))
