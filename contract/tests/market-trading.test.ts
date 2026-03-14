@@ -39,7 +39,7 @@ describe('Market Trading Tests', () => {
 
   it('should fail to buy YES on non-existent market', () => {
     const result = simnet.mineBlock([
-      tx.callPublicFn('contract', 'buy-yes', [uintCV(99999), uintCV(1000000)], user1)
+      tx.callPublicFn('contract', 'buy-yes', [uintCV(99999), uintCV(1000000), stringAsciiCV('US')], user1)
     ]);
     
     expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2005n } });
@@ -47,7 +47,7 @@ describe('Market Trading Tests', () => {
 
   it('should fail to buy NO on non-existent market', () => {
     const result = simnet.mineBlock([
-      tx.callPublicFn('contract', 'buy-no', [uintCV(99999), uintCV(1000000)], user1)
+      tx.callPublicFn('contract', 'buy-no', [uintCV(99999), uintCV(1000000), stringAsciiCV('US')], user1)
     ]);
     
     expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2005n } });
@@ -55,7 +55,7 @@ describe('Market Trading Tests', () => {
 
   it('should fail to buy with zero amount', () => {
     const result = simnet.mineBlock([
-      tx.callPublicFn('contract', 'buy-yes', [uintCV(marketId), uintCV(0)], user1)
+      tx.callPublicFn('contract', 'buy-yes', [uintCV(marketId), uintCV(0), stringAsciiCV('US')], user1)
     ]);
     
     expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2008n } });
