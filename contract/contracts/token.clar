@@ -41,7 +41,7 @@
 (define-map authorized-admins principal bool)
 
 
-(define-data-var contract-owner principal 'SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB)
+(define-data-var contract-owner principal tx-sender)
 
 (define-read-only (is-admin (user principal))
   (default-to false (map-get? authorized-admins user))
@@ -277,7 +277,7 @@
 ;; Sets the contract owner which will be the market contract address
 (define-public (initialize (owner principal))
   (begin
-    ;; (asserts! (is-eq tx-sender 'SP1EQNTKNRGME36P9EEXZCFFNCYBA50VN51676JB) ERR_UNAUTHORIZED)
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
     (var-set contract-owner owner)
     (ok true)
   )
