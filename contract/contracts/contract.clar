@@ -248,35 +248,24 @@
 ;; =====================================================================
 
 ;; Establishes a new prediction market
-(define-public (create-market (b uint) (start-time uint) (end-time uint) (question (string-ascii 256)) (c-id (string-ascii 64)) (collateral-trait <sip-010-trait>) (outcome-contract <outcome-trait>))
-    (let
-        (
-            (caller tx-sender)
-        )
-        (asserts! (is-authorized-caller caller) ERR_UNAUTHORIZED)
+(define-public (create-market (b uint) (start-time uint) (end-time uint) (question (string-ascii 256)) (c-id (string-ascii 64)))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
         (asserts! (> b u0) ERR_ZERO_LIQUIDITY)
         (asserts! (> end-time start-time) ERR_INVALID_PARAMS)
-        (try! (validate-traits collateral-trait outcome-contract))
-        
+        (asserts! (>= start-time (block-height)) ERR_INVALID_PARAMS)
+        (asserts! (<= (- end-time start-time) MAX_MARKET_DURATION) ERR_DURATION_EXCEEDED)
+
         (let
             (
                 (market-id (+ (var-get market-count) u1))
-                (b-internal (* b SCALING_FACTOR))
-                (fund-amount (/ (* b LN2) PRECISION)) ;; Initial liquidity required (b * ln(2))
                 (token-id-yes (+ (* market-id u2) u1))
                 (token-id-no (* market-id u2))
             )
-            ;; Collect the initial liquidity deposit
-            (try! (contract-call? collateral-trait transfer fund-amount caller (as-contract tx-sender) none))
-            
-            ;; Register Outcome Tokens
-            (try! (contract-call? outcome-contract initialize-token market-id token-id-yes token-id-no "Market YES" "Market NO" "YES" "NO"))
-            
-            ;; Save Market Data
             (map-set markets market-id
                 {
                     exists: true,
-                    b: b-internal,
+                    b: b,
                     q-yes: u0,
                     q-no: u0,
                     start-time: start-time,
@@ -289,9 +278,12 @@
                     token-id-no: token-id-no
                 }
             )
+            (map-set token-metadata token-id-yes { name: "Market YES", symbol: "YES", decimals: u6 })
+            (map-set token-metadata token-id-no { name: "Market NO", symbol: "NO", decimals: u6 })
+            (map-set total-supply-map token-id-yes u0)
+            (map-set total-supply-map token-id-no u0)
+            (map-set market-paused market-id false)
             (var-set market-count market-id)
-            
-            ;; Print Event
             (print {event: "market-created", market-id: market-id, question: question, end-time: end-time, liquidity: b})
             (ok market-id)
         )
