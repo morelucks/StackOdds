@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Cl } from "@stacks/transactions";
 
 const accounts = simnet.getAccounts();
@@ -6,6 +6,30 @@ const deployer = accounts.get("deployer")!;
 const user1 = accounts.get("wallet_1")!;
 
 describe("Pause Mechanism Tests", () => {
+  const ensureMarket = () => {
+    const countResult = simnet.callReadOnlyFn("contract", "get-market-count", [], deployer);
+    const count = Number((countResult.result as any).value.value);
+    if (count === 0) {
+      const currentBlock = simnet.blockHeight;
+      simnet.callPublicFn(
+        "contract",
+        "create-market",
+        [
+          Cl.uint(1000),
+          Cl.uint(currentBlock + 10),
+          Cl.uint(currentBlock + 100),
+          Cl.stringAscii("Pause market"),
+          Cl.stringAscii("pause-1")
+        ],
+        deployer
+      );
+    }
+  };
+
+  beforeEach(() => {
+    ensureMarket();
+  });
+
   it("should enable emergency pause", () => {
     const { result } = simnet.callPublicFn(
       "contract",
