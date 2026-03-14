@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Cl } from "@stacks/transactions";
 
 const accounts = simnet.getAccounts();
@@ -6,6 +6,30 @@ const deployer = accounts.get("deployer")!;
 const user1 = accounts.get("wallet_1")!;
 
 describe("Dynamic Pricing Tests", () => {
+  const ensureMarket = () => {
+    const countResult = simnet.callReadOnlyFn("contract", "get-market-count", [], deployer);
+    const count = Number((countResult.result as any).value.value);
+    if (count === 0) {
+      const currentBlock = simnet.blockHeight;
+      simnet.callPublicFn(
+        "contract",
+        "create-market",
+        [
+          Cl.uint(1000),
+          Cl.uint(currentBlock + 10),
+          Cl.uint(currentBlock + 100),
+          Cl.stringAscii("Dynamic pricing market"),
+          Cl.stringAscii("dyn-1")
+        ],
+        deployer
+      );
+    }
+  };
+
+  beforeEach(() => {
+    ensureMarket();
+  });
+
   it("should calculate buy cost using LMSR", () => {
     const { result } = simnet.callReadOnlyFn(
       "contract",
@@ -59,7 +83,9 @@ describe("Dynamic Pricing Tests", () => {
     );
     
     // Prices should sum to ~1000000 (scaled by 1e6)
-    const sum = priceYes.result + priceNo.result;
+    const priceYesValue = Number((priceYes.result as any).value.value);
+    const priceNoValue = Number((priceNo.result as any).value.value);
+    const sum = priceYesValue + priceNoValue;
     expect(sum).toBeCloseTo(1000000, 1000);
   });
 
@@ -85,6 +111,8 @@ describe("Dynamic Pricing Tests", () => {
       user1
     );
 
-    expect(priceAfter.result).toBeGreaterThan(priceBefore.result);
+    const beforeValue = Number((priceBefore.result as any).value.value);
+    const afterValue = Number((priceAfter.result as any).value.value);
+    expect(afterValue).toBeGreaterThan(beforeValue);
   });
 });
