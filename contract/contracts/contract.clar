@@ -16,7 +16,17 @@
 (define-constant ERR_MARKET_EXPIRED (err u2009))
 (define-constant ERR_MARKET_NOT_EXPIRED (err u2010))
 (define-constant ERR_INSUFFICIENT_BALANCE (err u2011))
-(define-constant ERR_INVALID_TRAIT (err u2012))
+(define-constant ERR_BLACKLISTED (err u2012))
+(define-constant ERR_NOT_WHITELISTED (err u2013))
+(define-constant ERR_GEO_RESTRICTED (err u2014))
+(define-constant ERR_DURATION_EXCEEDED (err u2015))
+(define-constant ERR_RESOLUTION_TOO_EARLY (err u2016))
+(define-constant ERR_MARKET_PAUSED (err u2017))
+
+;; Protocol configuration
+(define-constant FEE_SCALE u1000000)
+(define-constant MAX_MARKET_DURATION u10000)
+(define-constant RESOLUTION_DELAY u5)
 
 ;; Fixed-point math precision
 (define-constant PRECISION u1000000)
