@@ -112,17 +112,20 @@
 ;; =====================================================================
 ;; Admin & Setup Functions
 ;; =====================================================================
-(define-public (initialize (owner principal) (collateral principal) (outcome-token principal))
+(define-public (initialize (owner principal) (collateral principal))
     (begin
         ;; To allow overriding or strictly once, we enforce tx-sender is current owner
         (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
         (var-set contract-owner owner)
         (var-set collateral-token collateral)
-        (var-set outcome-token-contract outcome-token)
         (map-set admin-role owner true)
         (map-set moderator-role owner true)
         (ok true)
     )
+)
+
+(define-read-only (get-owner)
+    (ok (var-get contract-owner))
 )
 
 (define-read-only (is-authorized-caller (caller principal))
@@ -130,14 +133,6 @@
         (is-eq caller (var-get contract-owner))
         (default-to false (map-get? admin-role caller)) 
         (default-to false (map-get? moderator-role caller))
-    )
-)
-
-(define-private (validate-traits (collateral-trait <sip-010-trait>) (outcome-contract <outcome-trait>))
-    (begin
-        (asserts! (is-eq (contract-of collateral-trait) (var-get collateral-token)) ERR_INVALID_TRAIT)
-        (asserts! (is-eq (contract-of outcome-contract) (var-get outcome-token-contract)) ERR_INVALID_TRAIT)
-        (ok true)
     )
 )
 
