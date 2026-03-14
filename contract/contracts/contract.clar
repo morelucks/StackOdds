@@ -196,30 +196,55 @@
 )
 
 (define-read-only (calculate-price-yes (b uint) (q-yes uint) (q-no uint))
-    (let
-        (
-            (exp-yes (exp-approx (/ q-yes b)))
-            (exp-no (exp-approx (/ q-no b)))
-            (sum-exp (+ exp-yes exp-no))
+    (let ((denom (+ q-yes q-no (* u2 b))))
+        (if (is-eq denom u0)
+            (/ FEE_SCALE u2)
+            (/ (* (+ q-yes b) FEE_SCALE) denom)
         )
-        (/ (* exp-yes u1000000) sum-exp)
     )
 )
 
 (define-read-only (calculate-price-no (b uint) (q-yes uint) (q-no uint))
-    (let
-        (
-            (exp-yes (exp-approx (/ q-yes b)))
-            (exp-no (exp-approx (/ q-no b)))
-            (sum-exp (+ exp-yes exp-no))
+    (let ((denom (+ q-yes q-no (* u2 b))))
+        (if (is-eq denom u0)
+            (/ FEE_SCALE u2)
+            (/ (* (+ q-no b) FEE_SCALE) denom)
         )
-        (/ (* exp-no u1000000) sum-exp)
     )
 )
 
 ;; =====================================================================
 ;; Read-Only View Functions
 ;; =====================================================================
+(define-read-only (get-market (id uint))
+    (let ((m (map-get? markets id)))
+        (if (is-some m)
+            (ok (unwrap-panic m))
+            ERR_MARKET_NOT_CREATED
+        )
+    )
+)
+
+(define-read-only (get-market-or-default (id uint))
+    (default-to
+        {
+            exists: false,
+            b: u1000,
+            q-yes: u0,
+            q-no: u0,
+            start-time: u0,
+            end-time: u0,
+            resolved: false,
+            yes-won: false,
+            question: "",
+            c-id: "",
+            token-id-yes: u0,
+            token-id-no: u0
+        }
+        (map-get? markets id)
+    )
+)
+
 ;; Returns a summary of the market state
 (define-read-only (get-market-summary (id uint))
     (let ((m (unwrap! (map-get? markets id) ERR_MARKET_NOT_CREATED)))
@@ -241,6 +266,28 @@
 ;; Returns the total number of markets created
 (define-read-only (get-market-count)
     (ok (var-get market-count))
+)
+
+(define-read-only (get-price (market-id uint) (outcome uint))
+    (let ((m (get-market-or-default market-id)))
+        (ok (if (is-eq outcome u1)
+                (calculate-price-yes (get b m) (get q-yes m) (get q-no m))
+                (calculate-price-no (get b m) (get q-yes m) (get q-no m))
+            )
+        )
+    )
+)
+
+(define-read-only (get-buy-cost (market-id uint) (outcome uint) (amount uint))
+    (let ((price (unwrap-panic (get-price market-id outcome))))
+        (ok (/ (* price amount) FEE_SCALE))
+    )
+)
+
+(define-read-only (get-sell-payout (market-id uint) (outcome uint) (amount uint))
+    (let ((price (unwrap-panic (get-price market-id outcome))))
+        (ok (/ (* price amount) FEE_SCALE))
+    )
 )
 
 ;; =====================================================================
