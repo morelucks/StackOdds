@@ -63,11 +63,34 @@
 ;; =====================================================================
 (define-data-var contract-owner principal tx-sender)
 (define-data-var collateral-token principal tx-sender)
-(define-data-var outcome-token-contract principal tx-sender)
 (define-data-var market-count uint u0)
+(define-data-var trading-fee-rate uint u0)
+(define-data-var protocol-fees uint u0)
+(define-data-var emergency-paused bool false)
+(define-data-var whitelist-enabled bool false)
 
 (define-map admin-role principal bool)
 (define-map moderator-role principal bool)
+(define-map market-paused uint bool)
+(define-map blacklist principal bool)
+(define-map whitelist principal bool)
+(define-map geo-restricted (string-ascii 2) bool)
+
+(define-map lp-shares
+  { market-id: uint, owner: principal }
+  uint
+)
+(define-map total-lp-shares uint uint)
+
+(define-map token-metadata
+  uint
+  { name: (string-ascii 32), symbol: (string-ascii 10), decimals: uint }
+)
+(define-map balances
+  { owner: principal, token-id: uint }
+  uint
+)
+(define-map total-supply-map uint uint)
 
 (define-map markets uint
     {
