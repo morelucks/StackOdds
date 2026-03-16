@@ -183,26 +183,26 @@
 (define-read-only (exp-approx (x uint))
     (let
         (
-            (x-scaled (/ x u1000))
-            (x2 (/ (* x-scaled x-scaled) u1000))
-            (x3 (/ (* x2 x-scaled) u1000))
-            (x4 (/ (* x3 x-scaled) u1000))
+            (x1 (/ x u1000000000)) ;; Scale down for iteration
+            (x2 (/ (* x1 x1) u1000000000))
+            (x3 (/ (* x2 x1) u1000000000))
+            (x4 (/ (* x3 x1) u1000000000))
         )
-        (+ u1000000 (+ x-scaled (+ (/ x2 u2) (+ (/ x3 u6) (/ x4 u24)))))
+        (+ PRECISION (+ (* x1 u1000000000) (+ (/ (* x2 u1000000000) u2) (+ (/ (* x3 u1000000000) u6) (/ (* x4 u1000000000) u24)))))
     )
 )
 
 (define-read-only (ln-approx (x uint))
-    (if (<= x u1000000)
+    (if (<= x PRECISION)
         u0
         (let
             (
-                (x-minus-1 (- x u1000000))
-                (x-plus-1 (+ x u1000000))
-                (ratio (/ (* x-minus-1 u1000000) x-plus-1))
-                (ratio3 (/ (* ratio ratio ratio) (* u1000000 u1000000)))
+                (x-minus-1 (- x PRECISION))
+                (x-plus-1 (+ x PRECISION))
+                (ratio (/ (* x-minus-1 PRECISION) x-plus-1))
+                (ratio3 (/ (* ratio (* ratio ratio)) (* PRECISION PRECISION)))
             )
-            (/ (* (+ (* ratio u2) (/ ratio3 u3)) u1000000) u1000000)
+            (+ (* ratio u2) (/ (* ratio3 u2) u3))
         )
     )
 )
