@@ -364,48 +364,37 @@
 )
 
 ;; Private helper for buying shares updates quantities and applies LMSR pricing
-(define-private (buy-shares (market-id uint) (amount uint) (is-yes bool) (collateral-trait <sip-010-trait>) (outcome-contract <outcome-trait>))
+(define-private (buy-shares (market-id uint) (amount uint) (is-yes bool) (country (string-ascii 2)))
     (let
         (
             (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
             (initial-cost (calculate-cost (get b market) (get q-yes market) (get q-no market)))
-            (amount-internal (* amount SCALING_FACTOR))
+            (amount-internal (* amount TO_6_DECIMALS))
             (new-q-yes (if is-yes (+ (get q-yes market) amount-internal) (get q-yes market)))
             (new-q-no (if is-yes (get q-no market) (+ (get q-no market) amount-internal)))
             (new-cost (calculate-cost (get b market) new-q-yes new-q-no))
-            (collateral-required (/ (- new-cost initial-cost) SCALING_FACTOR))
+            (collateral-required (/ (- new-cost initial-cost) TO_6_DECIMALS))
             (token-id (if is-yes (get token-id-yes market) (get token-id-no market)))
         )
+        (try! (is-user-compliant tx-sender country))
+        (asserts! (not (default-to false (map-get? market-paused market-id))) ERR_MARKET_PAUSED)
         (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
         (asserts! (> collateral-required u0) ERR_INVALID_PARAMS)
         
-        ;; Collect Payment
-        (try! (contract-call? collateral-trait transfer collateral-required tx-sender (as-contract tx-sender) none))
-        
-        ;; Update Market Quantities
+        (try! (contract-call? .so-token transfer u0 collateral-required tx-sender (as-contract tx-sender)))
         (map-set markets market-id (merge market { q-yes: new-q-yes, q-no: new-q-no }))
-        
-        ;; Issue Shares
-        (try! (contract-call? outcome-contract mint token-id tx-sender amount))
+        (try! (as-contract (contract-call? .so-token mint token-id tx-sender amount)))
         
         (print {event: "shares-bought", market-id: market-id, buyer: tx-sender, is-yes: is-yes, amount: amount, cost: collateral-required})
         (ok collateral-required)
     )
 )
 
-(define-public (buy-yes (market-id uint) (amount uint) (collateral-trait <sip-010-trait>) (outcome-contract <outcome-trait>))
-    (begin
-        (try! (validate-traits collateral-trait outcome-contract))
-        (buy-shares market-id amount true collateral-trait outcome-contract)
-    )
-)
+(define-public (buy-yes (market-id uint) (amount uint) (country (string-ascii 2)))
+    (buy-shares market-id amount true country))
 
-(define-public (buy-no (market-id uint) (amount uint) (collateral-trait <sip-010-trait>) (outcome-contract <outcome-trait>))
-    (begin
-        (try! (validate-traits collateral-trait outcome-contract))
-        (buy-shares market-id amount false collateral-trait outcome-contract)
-    )
-)
+(define-public (buy-no (market-id uint) (amount uint) (country (string-ascii 2)))
+    (buy-shares market-id amount false country))
 
 ;; Resolves the market assigning the winning outcome
 (define-public (resolve-market (market-id uint) (yes-won bool))
