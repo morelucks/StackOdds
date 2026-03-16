@@ -64,13 +64,13 @@ plan:
     - id: 0
       transactions:
         - emulated-contract-publish:
-            contract-name: contract
-            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/contract.clar
-            clarity-version: 2
-        - emulated-contract-publish:
-            contract-name: token
+            contract-name: so-token
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: contracts/token.clar
+            clarity-version: 2
+        - emulated-contract-publish:
+            contract-name: stackodds
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/contract.clar
             clarity-version: 2
       epoch: "2.1"
