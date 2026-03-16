@@ -396,41 +396,77 @@
 (define-public (buy-no (market-id uint) (amount uint) (country (string-ascii 2)))
     (buy-shares market-id amount false country))
 
-;; Resolves the market assigning the winning outcome
-(define-public (resolve-market (market-id uint) (yes-won bool))
+(define-public (add-liquidity (market-id uint) (amount uint))
     (let
         (
             (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
+            (current-shares (default-to u0 (map-get? lp-shares { market-id: market-id, owner: tx-sender })))
+            (current-total (default-to u0 (map-get? total-lp-shares market-id)))
         )
+        (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
+        (try! (contract-call? .so-token transfer u0 amount tx-sender (as-contract tx-sender)))
+        (map-set lp-shares { market-id: market-id, owner: tx-sender } (+ current-shares amount))
+        (map-set total-lp-shares market-id (+ current-total amount))
+        (print {event: "liquidity-added", market-id: market-id, provider: tx-sender, amount: amount})
+        (ok true)
+    )
+)
+
+(define-public (remove-liquidity (market-id uint) (amount uint))
+    (let
+        (
+            (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
+            (current-shares (default-to u0 (map-get? lp-shares { market-id: market-id, owner: tx-sender })))
+            (current-total (default-to u0 (map-get? total-lp-shares market-id)))
+        )
+        (asserts! (>= current-shares amount) ERR_INSUFFICIENT_SHARES)
+        (try! (contract-call? .so-token transfer u0 amount (as-contract tx-sender) tx-sender))
+        (map-set lp-shares { market-id: market-id, owner: tx-sender } (- current-shares amount))
+        (map-set total-lp-shares market-id (- current-total amount))
+        (print {event: "liquidity-removed", market-id: market-id, provider: tx-sender, amount: amount})
+        (ok true)
+    )
+)
+
+(define-public (transfer (token-id uint) (amount uint) (sender principal) (recipient principal))
+    (begin
+        (asserts! (is-eq tx-sender sender) ERR_UNAUTHORIZED)
+        (contract-call? .so-token transfer token-id amount sender recipient)
+    )
+)
+
+(define-public (resolve-market (market-id uint) (yes-won bool))
+    (let ((market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
         (asserts! (is-authorized-caller tx-sender) ERR_UNAUTHORIZED)
         (asserts! (not (get resolved market)) ERR_ALREADY_RESOLVED)
-        
         (map-set markets market-id (merge market { resolved: true, yes-won: yes-won }))
-        
         (print {event: "market-resolved", market-id: market-id, yes-won: yes-won})
         (ok true)
     )
 )
 
-;; Allows users to redeem their winning shares for collateral at 1:1 ratio
-(define-public (claim (market-id uint) (collateral-trait <sip-010-trait>) (outcome-contract <outcome-trait>))
+(define-public (claim (market-id uint))
     (let
         (
             (market (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
             (token-id (if (get yes-won market) (get token-id-yes market) (get token-id-no market)))
-            (winning-shares (try! (contract-call? outcome-contract get-balance token-id tx-sender)))
+            (winning-shares (unwrap-panic (contract-call? .so-token get-balance token-id tx-sender)))
         )
-        (try! (validate-traits collateral-trait outcome-contract))
         (asserts! (get resolved market) ERR_NOT_RESOLVED)
         (asserts! (> winning-shares u0) ERR_INSUFFICIENT_SHARES)
-        
-        ;; Burn shares
-        (try! (contract-call? outcome-contract burn token-id tx-sender winning-shares))
-        
-        ;; Payout collateral
-        (try! (contract-call? collateral-trait transfer winning-shares (as-contract tx-sender) tx-sender none))
-        
+        (try! (as-contract (contract-call? .so-token burn token-id tx-sender winning-shares)))
+        (try! (as-contract (contract-call? .so-token transfer u0 winning-shares (as-contract tx-sender) tx-sender)))
         (print {event: "winnings-claimed", market-id: market-id, user: tx-sender, amount: winning-shares})
         (ok winning-shares)
     )
 )
+
+(define-public (set-trading-fee-rate (rate uint))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
+        (var-set trading-fee-rate rate)
+        (ok true)
+    )
+)
+
+(define-read-only (get-protocol-fees) (ok (var-get protocol-fees)))
