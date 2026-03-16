@@ -207,34 +207,36 @@
     )
 )
 
-;; Calculates the cost of a trade using the LMSR pricing model
 (define-read-only (calculate-cost (b uint) (q-yes uint) (q-no uint))
     (let
         (
-            (exp-yes (exp-approx (/ q-yes b)))
-            (exp-no (exp-approx (/ q-no b)))
-            (sum-exp (+ exp-yes exp-no))
-            (ln-sum (ln-approx sum-exp))
+            (exp-yes (exp-approx (/ (* q-yes PRECISION) b)))
+            (exp-no (exp-approx (/ (* q-no PRECISION) b)))
+            (ln-sum (ln-approx (+ exp-yes exp-no)))
         )
         (/ (* b ln-sum) PRECISION)
     )
 )
 
 (define-read-only (calculate-price-yes (b uint) (q-yes uint) (q-no uint))
-    (let ((denom (+ q-yes q-no (* u2 b))))
-        (if (is-eq denom u0)
-            (/ FEE_SCALE u2)
-            (/ (* (+ q-yes b) FEE_SCALE) denom)
+    (let
+        (
+            (exp-yes (exp-approx (/ (* q-yes PRECISION) b)))
+            (exp-no (exp-approx (/ (* q-no PRECISION) b)))
+            (sum-exp (+ exp-yes exp-no))
         )
+        (/ (* exp-yes FEE_SCALE) sum-exp)
     )
 )
 
 (define-read-only (calculate-price-no (b uint) (q-yes uint) (q-no uint))
-    (let ((denom (+ q-yes q-no (* u2 b))))
-        (if (is-eq denom u0)
-            (/ FEE_SCALE u2)
-            (/ (* (+ q-no b) FEE_SCALE) denom)
+    (let
+        (
+            (exp-yes (exp-approx (/ (* q-yes PRECISION) b)))
+            (exp-no (exp-approx (/ (* q-no PRECISION) b)))
+            (sum-exp (+ exp-yes exp-no))
         )
+        (/ (* exp-no FEE_SCALE) sum-exp)
     )
 )
 
