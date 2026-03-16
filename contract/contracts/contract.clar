@@ -245,34 +245,10 @@
 ;; =====================================================================
 (define-read-only (get-market (id uint))
     (let ((m (map-get? markets id)))
-        (if (is-some m)
-            (ok (unwrap-panic m))
-            ERR_MARKET_NOT_CREATED
-        )
+        (if (is-some m) (ok (unwrap-panic m)) ERR_MARKET_NOT_CREATED)
     )
 )
 
-(define-read-only (get-market-or-default (id uint))
-    (default-to
-        {
-            exists: false,
-            b: u1000,
-            q-yes: u0,
-            q-no: u0,
-            start-time: u0,
-            end-time: u0,
-            resolved: false,
-            yes-won: false,
-            question: "",
-            c-id: "",
-            token-id-yes: u0,
-            token-id-no: u0
-        }
-        (map-get? markets id)
-    )
-)
-
-;; Returns a summary of the market state
 (define-read-only (get-market-summary (id uint))
     (let ((m (unwrap! (map-get? markets id) ERR_MARKET_NOT_CREATED)))
         (ok {
@@ -290,13 +266,10 @@
     )
 )
 
-;; Returns the total number of markets created
-(define-read-only (get-market-count)
-    (ok (var-get market-count))
-)
+(define-read-only (get-market-count) (ok (var-get market-count)))
 
 (define-read-only (get-price (market-id uint) (outcome uint))
-    (let ((m (get-market-or-default market-id)))
+    (let ((m (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED)))
         (ok (if (is-eq outcome u1)
                 (calculate-price-yes (get b m) (get q-yes m) (get q-no m))
                 (calculate-price-no (get b m) (get q-yes m) (get q-no m))
