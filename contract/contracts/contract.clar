@@ -327,12 +327,12 @@
 ;; =====================================================================
 
 ;; Establishes a new prediction market
-(define-public (create-market (b uint) (start-time uint) (end-time uint) (question (string-ascii 256)) (c-id (string-ascii 64)))
+(define-public (create-market (b-ui uint) (start-time uint) (end-time uint) (question (string-ascii 256)) (c-id (string-ascii 64)))
     (begin
         (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-        (asserts! (> b u0) ERR_ZERO_LIQUIDITY)
+        (asserts! (> b-ui u0) ERR_ZERO_LIQUIDITY)
         (asserts! (> end-time start-time) ERR_INVALID_PARAMS)
-        (asserts! (>= start-time (block-height)) ERR_INVALID_PARAMS)
+        (asserts! (>= start-time block-height) ERR_INVALID_PARAMS)
         (asserts! (<= (- end-time start-time) MAX_MARKET_DURATION) ERR_DURATION_EXCEEDED)
 
         (let
@@ -340,30 +340,24 @@
                 (market-id (+ (var-get market-count) u1))
                 (token-id-yes (+ (* market-id u2) u1))
                 (token-id-no (* market-id u2))
+                (b-internal (* b-ui TO_6_DECIMALS))
+                (fund-amount (/ (* b-internal LN2) (* PRECISION TO_6_DECIMALS))) ;; Corrected divisor: 10^18 * 10^18 / 10^30 = 10^0.693...
             )
             (map-set markets market-id
                 {
-                    exists: true,
-                    b: b,
-                    q-yes: u0,
-                    q-no: u0,
-                    start-time: start-time,
-                    end-time: end-time,
-                    resolved: false,
-                    yes-won: false,
-                    question: question,
-                    c-id: c-id,
-                    token-id-yes: token-id-yes,
-                    token-id-no: token-id-no
+                    exists: true, b: b-internal, q-yes: u0, q-no: u0,
+                    start-time: start-time, end-time: end-time,
+                    resolved: false, yes-won: false, question: question, c-id: c-id,
+                    token-id-yes: token-id-yes, token-id-no: token-id-no
                 }
             )
-            (map-set token-metadata token-id-yes { name: "Market YES", symbol: "YES", decimals: u6 })
-            (map-set token-metadata token-id-no { name: "Market NO", symbol: "NO", decimals: u6 })
-            (map-set total-supply-map token-id-yes u0)
-            (map-set total-supply-map token-id-no u0)
+            ;; Market creator MUST fund the initial liquidity: b * ln(2)
+            (try! (contract-call? .so-token transfer u0 fund-amount tx-sender (as-contract tx-sender)))
+            (try! (as-contract (contract-call? .so-token initialize-token market-id token-id-yes token-id-no "Market YES" "Market NO" "YES" "NO")))
+            (map-set total-lp-shares market-id u0)
             (map-set market-paused market-id false)
             (var-set market-count market-id)
-            (print {event: "market-created", market-id: market-id, question: question, end-time: end-time, liquidity: b})
+            (print {event: "market-created", market-id: market-id, b: b-internal, question: question, end-time: end-time})
             (ok market-id)
         )
     )
