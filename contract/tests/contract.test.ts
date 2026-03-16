@@ -17,8 +17,10 @@ describe('Contract Tests', () => {
     user2 = simnet.getAccounts().get('wallet_2')!;
     contractAddress = `${deployer}.contract`;
 
-    // Initialize token contract with market contract address as owner
+    // Mint collateral to deployer while they are still the owner of 'token'
     simnet.mineBlock([
+      tx.callPublicFn('token', 'mint', [uintCV(0), principalCV(deployer), uintCV(10000000000)], deployer),
+      tx.callPublicFn('token', 'mint', [uintCV(0), principalCV(user1), uintCV(10000000000)], deployer),
       tx.callPublicFn('token', 'initialize', [principalCV(contractAddress)], deployer)
     ]);
   });
