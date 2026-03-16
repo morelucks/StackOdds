@@ -279,15 +279,47 @@
 )
 
 (define-read-only (get-buy-cost (market-id uint) (outcome uint) (amount uint))
-    (let ((price (unwrap-panic (get-price market-id outcome))))
-        (ok (/ (* price amount) FEE_SCALE))
+    (let
+        (
+            (m (unwrap! (map-get? markets market-id) ERR_MARKET_NOT_CREATED))
+            (initial-cost (calculate-cost (get b m) (get q-yes m) (get q-no m)))
+            (amount-internal (* amount TO_6_DECIMALS))
+            (final-cost (if (is-eq outcome u1)
+                           (calculate-cost (get b m) (+ (get q-yes m) amount-internal) (get q-no m))
+                           (calculate-cost (get b m) (get q-yes m) (+ (get q-no m) amount-internal))))
+        )
+        (ok (/ (- final-cost initial-cost) TO_6_DECIMALS))
     )
 )
 
 (define-read-only (get-sell-payout (market-id uint) (outcome uint) (amount uint))
-    (let ((price (unwrap-panic (get-price market-id outcome))))
-        (ok (/ (* price amount) FEE_SCALE))
+    (get-buy-cost market-id outcome amount))
+
+(define-read-only (get-lp-shares (market-id uint) (owner principal))
+    (ok (default-to u0 (map-get? lp-shares { market-id: market-id, owner: owner }))))
+
+(define-read-only (get-total-lp-shares (market-id uint))
+    (ok (default-to u0 (map-get? total-lp-shares market-id))))
+
+(define-read-only (get-token-id (market-id uint) (outcome uint))
+    (let ((m (map-get? markets market-id)))
+        (if (is-some m)
+            (ok (if (is-eq outcome u1) (get token-id-yes (unwrap-panic m)) (get token-id-no (unwrap-panic m))))
+            (ok u0)
+        )
     )
+)
+
+(define-read-only (get-balance (token-id uint) (owner principal))
+    (contract-call? .so-token get-balance token-id owner)
+)
+
+(define-read-only (get-total-supply (token-id uint))
+    (contract-call? .so-token get-total-supply token-id)
+)
+
+(define-read-only (get-token-metadata (token-id uint))
+    (contract-call? .so-token get-token-metadata token-id)
 )
 
 ;; =====================================================================
