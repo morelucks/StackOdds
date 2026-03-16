@@ -22,6 +22,7 @@
 (define-constant ERR_DURATION_EXCEEDED (err u2015))
 (define-constant ERR_RESOLUTION_TOO_EARLY (err u2016))
 (define-constant ERR_MARKET_PAUSED (err u2017))
+(define-constant ERR_INSUFFICIENT_FUNDS (err u2018))
 
 ;; Protocol configuration
 (define-constant FEE_SCALE u1000000)
@@ -29,10 +30,10 @@
 (define-constant RESOLUTION_DELAY u5)
 
 ;; Fixed-point math precision
-(define-constant PRECISION u1000000)
-(define-constant PRECISION_18 u1000000000000000000)
-(define-constant LN2 u693147) ;; ln(2) scaled to 6 decimals
-(define-constant SCALING_FACTOR u1000000000000) ;; 12 decimals for internal quantity scaling
+(define-constant PRECISION u1000000000000000000) ;; 18 decimals for internal math
+(define-constant LN2 u693147180559945309) ;; ln(2) scaled to 18 decimals
+(define-constant TO_6_DECIMALS u1000000000000) ;; Multiplier to go from 6 to 18
+(define-constant FROM_6_DECIMALS u1000000) ;; Multiplier for 6-decimal UI inputs
 
 ;; =====================================================================
 ;; Traits
