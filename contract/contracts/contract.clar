@@ -78,7 +78,6 @@
 ;; =====================================================================
 (define-public (initialize (owner principal) (collateral principal))
     (begin
-        ;; To allow overriding or strictly once, we enforce tx-sender is current owner
         (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
         (var-set contract-owner owner)
         (var-set collateral-token collateral)
@@ -88,9 +87,7 @@
     )
 )
 
-(define-read-only (get-owner)
-    (ok (var-get contract-owner))
-)
+(define-read-only (get-owner) (ok (var-get contract-owner)))
 
 (define-read-only (is-authorized-caller (caller principal))
     (or 
@@ -98,6 +95,10 @@
         (default-to false (map-get? admin-role caller)) 
         (default-to false (map-get? moderator-role caller))
     )
+)
+
+(define-read-only (is-authorized (caller principal))
+    (ok (is-authorized-caller caller))
 )
 
 (define-public (set-admin-role (account principal) (enabled bool))
