@@ -36,30 +36,6 @@
 (define-constant FROM_6_DECIMALS u1000000) ;; Multiplier for 6-decimal UI inputs
 
 ;; =====================================================================
-;; Traits
-;; =====================================================================
-(define-trait sip-010-trait
-  (
-    (transfer (uint principal principal (optional (buff 34))) (response bool uint))
-    (get-name () (response (string-ascii 32) uint))
-    (get-symbol () (response (string-ascii 10) uint))
-    (get-decimals () (response uint uint))
-    (get-balance (principal) (response uint uint))
-    (get-total-supply () (response uint uint))
-    (get-token-uri () (response (optional (string-utf8 256)) uint))
-  )
-)
-
-(define-trait outcome-trait
-  (
-    (initialize-token (uint uint uint (string-ascii 32) (string-ascii 32) (string-ascii 10) (string-ascii 10)) (response bool uint))
-    (mint (uint principal uint) (response bool uint))
-    (burn (uint principal uint) (response bool uint))
-    (get-balance (uint principal) (response uint uint))
-  )
-)
-
-;; =====================================================================
 ;; Data Variables and Maps
 ;; =====================================================================
 (define-data-var contract-owner principal tx-sender)
@@ -77,34 +53,21 @@
 (define-map whitelist principal bool)
 (define-map geo-restricted (string-ascii 2) bool)
 
-(define-map lp-shares
-  { market-id: uint, owner: principal }
-  uint
-)
+(define-map lp-shares { market-id: uint, owner: principal } uint)
 (define-map total-lp-shares uint uint)
-
-(define-map token-metadata
-  uint
-  { name: (string-ascii 32), symbol: (string-ascii 10), decimals: uint }
-)
-(define-map balances
-  { owner: principal, token-id: uint }
-  uint
-)
-(define-map total-supply-map uint uint)
 
 (define-map markets uint
     {
         exists: bool,
         b: uint,               ;; LMSR liquidity parameter (scaled to 18 decimals)
-        q-yes: uint,           ;; YES token quantity
-        q-no: uint,            ;; NO token quantity
-        start-time: uint,      ;; Start time (Unix timestamp)
-        end-time: uint,        ;; End time (Unix timestamp)
-        resolved: bool,        ;; True if resolved
-        yes-won: bool,         ;; True if YES won, false if NO won (valid only if resolved)
-        question: (string-ascii 256), ;; Market string or identifier
-        c-id: (string-ascii 64),      ;; Content identifier (IPFS CID)
+        q-yes: uint,           ;; YES token quantity (scaled to 18 decimals)
+        q-no: uint,            ;; NO token quantity (scaled to 18 decimals)
+        start-time: uint,
+        end-time: uint,
+        resolved: bool,
+        yes-won: bool,
+        question: (string-ascii 256),
+        c-id: (string-ascii 64),
         token-id-yes: uint,
         token-id-no: uint
     }
