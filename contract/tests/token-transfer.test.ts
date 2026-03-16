@@ -15,7 +15,9 @@ describe('Token Transfer Tests', () => {
     user1 = simnet.getAccounts().get('wallet_1')!;
     user2 = simnet.getAccounts().get('wallet_2')!;
     
+    // Mint collateral to user1 while they are still the owner of 'token' or deployer is
     simnet.mineBlock([
+      tx.callPublicFn('token', 'mint', [uintCV(0), principalCV(user1), uintCV(10000000)], deployer),
       tx.callPublicFn('token', 'initialize', [principalCV(`${deployer}.contract`)], deployer)
     ]);
   });

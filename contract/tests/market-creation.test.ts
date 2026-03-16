@@ -13,7 +13,9 @@ describe('Market Creation Tests', () => {
     deployer = simnet.getAccounts().get('deployer')!;
     user1 = simnet.getAccounts().get('wallet_1')!;
     
+    // Mint collateral to deployer while they are still the owner of 'token'
     simnet.mineBlock([
+      tx.callPublicFn('token', 'mint', [uintCV(0), principalCV(deployer), uintCV(10000000000)], deployer),
       tx.callPublicFn('token', 'initialize', [principalCV(`${deployer}.contract`)], deployer)
     ]);
     
