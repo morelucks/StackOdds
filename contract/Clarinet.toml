@@ -2,14 +2,14 @@
 name = "stackodds"
 description = "Prototype LMSR-style prediction market on Stacks"
 authors = []
-telemetry = true
+telemetry = false
 cache_dir = "./.cache"
 
-[contracts.token]
+[contracts.so-token]
 path = "contracts/token.clar"
 epoch = 2.1
 
-[contracts.contract]
+[contracts.stackodds]
 path = "contracts/contract.clar"
 epoch = 2.1
 
