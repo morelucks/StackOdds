@@ -96,3 +96,4 @@ describe('Rewards Scoring Logic', () => {
 // step 15
 // step 16
 // step 17
+// step 18
