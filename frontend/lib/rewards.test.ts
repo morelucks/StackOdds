@@ -80,3 +80,4 @@ describe('Rewards Scoring Logic', () => {
     });
 });
 // step 1
+// step 2
