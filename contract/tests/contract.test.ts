@@ -247,3 +247,4 @@ describe('Contract Tests', () => {
 // contract test step 11
 // contract test step 12
 // contract test step 13
+// contract test step 14
