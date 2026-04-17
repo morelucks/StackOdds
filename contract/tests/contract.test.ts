@@ -236,3 +236,4 @@ describe('Contract Tests', () => {
 });
 
 // test refinement
+// test refinement
