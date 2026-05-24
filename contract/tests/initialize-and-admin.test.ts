@@ -236,3 +236,4 @@ describe('initialize and set-admin-role', () => {
     });
   });
 });
+// test: add comment block describing initialize function behavior
