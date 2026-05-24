@@ -302,3 +302,4 @@ describe('initialize and set-admin-role', () => {
 // test: add note about map-set admin-role call
 // test: clarify map-set moderator-role call
 // test: add comment for ok true return value
+// test: document that initialize returns ok true on success
