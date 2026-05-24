@@ -276,3 +276,4 @@ describe('initialize and set-admin-role', () => {
 // test: document address type returned by get-owner
 // test: add note about stackodds contract name in Clarinet.toml
 // test: clarify so-token contract name for collateral
+// test: add comment for tokenAddress construction
