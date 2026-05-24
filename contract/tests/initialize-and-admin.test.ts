@@ -261,3 +261,4 @@ describe('initialize and set-admin-role', () => {
 // test: add note about uint value bigint representation
 // test: clarify true/false type in Clarity response
 // test: add comment for address type in principal response
+// test: document that admin can not grant admin to others
