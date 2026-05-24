@@ -272,3 +272,4 @@ describe('initialize and set-admin-role', () => {
 // test: document that is-authorized checks owner OR admin OR moderator
 // test: add note about moderator-role granted on initialize
 // test: clarify admin-role granted on initialize
+// test: add comment for get-owner read-only function
