@@ -252,3 +252,4 @@ describe('initialize and set-admin-role', () => {
 // test: document principalCV usage for address args
 // test: add note about simnet account setup
 // test: clarify wallet_1 and wallet_2 are non-owner accounts
+// test: add comment for beforeEach initialization pattern
