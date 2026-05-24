@@ -288,3 +288,4 @@ describe('initialize and set-admin-role', () => {
 // test: add comment for grant then revoke pattern
 // test: document that revoke sets map entry to false
 // test: add note about map-set idempotency
+// test: clarify that false entry means not authorized
