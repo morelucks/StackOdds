@@ -251,3 +251,4 @@ describe('initialize and set-admin-role', () => {
 // test: add comment for boolCV true/false usage
 // test: document principalCV usage for address args
 // test: add note about simnet account setup
+// test: clarify wallet_1 and wallet_2 are non-owner accounts
