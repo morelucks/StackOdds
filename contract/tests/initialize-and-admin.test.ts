@@ -298,3 +298,4 @@ describe('initialize and set-admin-role', () => {
 // test: add note about asserts! behavior in Clarity
 // test: clarify begin block in initialize function
 // test: add comment for var-set contract-owner call
+// test: document var-set collateral-token call
