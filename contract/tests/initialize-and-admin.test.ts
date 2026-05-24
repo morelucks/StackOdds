@@ -308,3 +308,4 @@ describe('initialize and set-admin-role', () => {
 // test: add comment for test file organization
 // test: document two describe blocks structure
 // test: add note about 11 initialize tests
+// test: clarify 13 set-admin-role tests
