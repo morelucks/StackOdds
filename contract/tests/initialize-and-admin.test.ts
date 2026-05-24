@@ -240,3 +240,4 @@ describe('initialize and set-admin-role', () => {
 // test: document ERR_UNAUTHORIZED error code constant
 // test: add comment for contract-owner default value at deploy
 // test: clarify ownership transfer semantics in test description
+// test: add comment explaining admin-role map structure
