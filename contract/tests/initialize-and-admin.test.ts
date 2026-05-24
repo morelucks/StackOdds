@@ -248,3 +248,4 @@ describe('initialize and set-admin-role', () => {
 // test: document that initialize can be called multiple times
 // test: add comment explaining ERR_UNAUTHORIZED value u2001
 // test: note that set-admin-role only owner-gated
+// test: add comment for boolCV true/false usage
