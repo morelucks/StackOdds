@@ -274,3 +274,4 @@ describe('initialize and set-admin-role', () => {
 // test: clarify admin-role granted on initialize
 // test: add comment for get-owner read-only function
 // test: document address type returned by get-owner
+// test: add note about stackodds contract name in Clarinet.toml
