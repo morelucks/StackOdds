@@ -250,3 +250,4 @@ describe('initialize and set-admin-role', () => {
 // test: note that set-admin-role only owner-gated
 // test: add comment for boolCV true/false usage
 // test: document principalCV usage for address args
+// test: add note about simnet account setup
