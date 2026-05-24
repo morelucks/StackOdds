@@ -242,3 +242,4 @@ describe('initialize and set-admin-role', () => {
 // test: clarify ownership transfer semantics in test description
 // test: add comment explaining admin-role map structure
 // test: document moderator-role map behavior
+// test: add note about is-authorized read-only function
