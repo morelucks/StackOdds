@@ -289,3 +289,4 @@ describe('initialize and set-admin-role', () => {
 // test: document that revoke sets map entry to false
 // test: add note about map-set idempotency
 // test: clarify that false entry means not authorized
+// test: add comment for user2 isolation test
