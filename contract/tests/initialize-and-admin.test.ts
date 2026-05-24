@@ -271,3 +271,4 @@ describe('initialize and set-admin-role', () => {
 // test: add comment for collateral as deployer address edge case
 // test: document that is-authorized checks owner OR admin OR moderator
 // test: add note about moderator-role granted on initialize
+// test: clarify admin-role granted on initialize
