@@ -285,3 +285,4 @@ describe('initialize and set-admin-role', () => {
 // test: document beforeEach scope for set-admin-role tests
 // test: add note about test ordering independence
 // test: clarify that simnet resets between tests
+// test: add comment for grant then revoke pattern
