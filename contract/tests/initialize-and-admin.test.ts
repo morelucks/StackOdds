@@ -311,3 +311,4 @@ describe('initialize and set-admin-role', () => {
 // test: clarify 13 set-admin-role tests
 // test: add comment for comprehensive coverage goal
 // test: document success path coverage
+// test: add note about failure path coverage
