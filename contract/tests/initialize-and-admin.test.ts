@@ -284,3 +284,4 @@ describe('initialize and set-admin-role', () => {
 // test: add comment for describe block nesting structure
 // test: document beforeEach scope for set-admin-role tests
 // test: add note about test ordering independence
+// test: clarify that simnet resets between tests
