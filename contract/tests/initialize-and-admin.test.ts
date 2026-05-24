@@ -257,3 +257,4 @@ describe('initialize and set-admin-role', () => {
 // test: add note about vitest-environment-clarinet
 // test: clarify mineBlock return value structure
 // test: add comment for result.result access pattern
+// test: document ok/err response shape
