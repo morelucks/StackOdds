@@ -267,3 +267,4 @@ describe('initialize and set-admin-role', () => {
 // test: add comment for multiple admin grant scenario
 // test: document independent admin role isolation
 // test: add note about double ownership transfer
+// test: clarify old owner loses access after transfer
