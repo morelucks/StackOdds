@@ -238,3 +238,4 @@ describe('initialize and set-admin-role', () => {
 });
 // test: add comment block describing initialize function behavior
 // test: document ERR_UNAUTHORIZED error code constant
+// test: add comment for contract-owner default value at deploy
