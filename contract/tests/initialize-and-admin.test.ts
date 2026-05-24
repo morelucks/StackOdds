@@ -291,3 +291,4 @@ describe('initialize and set-admin-role', () => {
 // test: clarify that false entry means not authorized
 // test: add comment for user2 isolation test
 // test: document that owner authorization is not map-based
+// test: add note about is-authorized-caller internal function
