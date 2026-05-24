@@ -278,3 +278,4 @@ describe('initialize and set-admin-role', () => {
 // test: clarify so-token contract name for collateral
 // test: add comment for tokenAddress construction
 // test: document deployer address format
+// test: add note about wallet_1 address format
