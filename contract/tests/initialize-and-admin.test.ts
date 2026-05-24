@@ -286,3 +286,4 @@ describe('initialize and set-admin-role', () => {
 // test: add note about test ordering independence
 // test: clarify that simnet resets between tests
 // test: add comment for grant then revoke pattern
+// test: document that revoke sets map entry to false
