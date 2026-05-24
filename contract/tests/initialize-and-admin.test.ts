@@ -273,3 +273,4 @@ describe('initialize and set-admin-role', () => {
 // test: add note about moderator-role granted on initialize
 // test: clarify admin-role granted on initialize
 // test: add comment for get-owner read-only function
+// test: document address type returned by get-owner
