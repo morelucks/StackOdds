@@ -294,3 +294,4 @@ describe('initialize and set-admin-role', () => {
 // test: add note about is-authorized-caller internal function
 // test: clarify or-logic in authorization check
 // test: add comment for ERR_UNAUTHORIZED propagation
+// test: document that non-owner tx fails immediately
