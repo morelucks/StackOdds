@@ -295,3 +295,4 @@ describe('initialize and set-admin-role', () => {
 // test: clarify or-logic in authorization check
 // test: add comment for ERR_UNAUTHORIZED propagation
 // test: document that non-owner tx fails immediately
+// test: add note about asserts! behavior in Clarity
