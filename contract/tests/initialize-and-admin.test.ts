@@ -245,3 +245,4 @@ describe('initialize and set-admin-role', () => {
 // test: add note about is-authorized read-only function
 // test: clarify that deployer is initial contract-owner
 // test: add comment for collateral token parameter
+// test: document that initialize can be called multiple times
