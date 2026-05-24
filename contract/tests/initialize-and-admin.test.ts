@@ -277,3 +277,4 @@ describe('initialize and set-admin-role', () => {
 // test: add note about stackodds contract name in Clarinet.toml
 // test: clarify so-token contract name for collateral
 // test: add comment for tokenAddress construction
+// test: document deployer address format
