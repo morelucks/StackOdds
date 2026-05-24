@@ -290,3 +290,4 @@ describe('initialize and set-admin-role', () => {
 // test: add note about map-set idempotency
 // test: clarify that false entry means not authorized
 // test: add comment for user2 isolation test
+// test: document that owner authorization is not map-based
