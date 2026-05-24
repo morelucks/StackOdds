@@ -244,3 +244,4 @@ describe('initialize and set-admin-role', () => {
 // test: document moderator-role map behavior
 // test: add note about is-authorized read-only function
 // test: clarify that deployer is initial contract-owner
+// test: add comment for collateral token parameter
