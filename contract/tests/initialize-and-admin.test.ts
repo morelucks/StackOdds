@@ -268,3 +268,4 @@ describe('initialize and set-admin-role', () => {
 // test: document independent admin role isolation
 // test: add note about double ownership transfer
 // test: clarify old owner loses access after transfer
+// test: add comment for collateral as deployer address edge case
