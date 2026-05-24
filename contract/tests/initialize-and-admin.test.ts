@@ -301,3 +301,4 @@ describe('initialize and set-admin-role', () => {
 // test: document var-set collateral-token call
 // test: add note about map-set admin-role call
 // test: clarify map-set moderator-role call
+// test: add comment for ok true return value
