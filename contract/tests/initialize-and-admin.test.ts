@@ -299,3 +299,4 @@ describe('initialize and set-admin-role', () => {
 // test: clarify begin block in initialize function
 // test: add comment for var-set contract-owner call
 // test: document var-set collateral-token call
+// test: add note about map-set admin-role call
