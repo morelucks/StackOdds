@@ -254,3 +254,4 @@ describe('initialize and set-admin-role', () => {
 // test: clarify wallet_1 and wallet_2 are non-owner accounts
 // test: add comment for beforeEach initialization pattern
 // test: document test isolation via simnet reset
+// test: add note about vitest-environment-clarinet
