@@ -259,3 +259,4 @@ describe('initialize and set-admin-role', () => {
 // test: add comment for result.result access pattern
 // test: document ok/err response shape
 // test: add note about uint value bigint representation
+// test: clarify true/false type in Clarity response
