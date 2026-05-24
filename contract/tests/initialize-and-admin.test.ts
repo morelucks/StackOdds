@@ -258,3 +258,4 @@ describe('initialize and set-admin-role', () => {
 // test: clarify mineBlock return value structure
 // test: add comment for result.result access pattern
 // test: document ok/err response shape
+// test: add note about uint value bigint representation
