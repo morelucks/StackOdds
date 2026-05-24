@@ -264,3 +264,4 @@ describe('initialize and set-admin-role', () => {
 // test: document that admin can not grant admin to others
 // test: add note about owner always being authorized
 // test: clarify revoking non-existent role is safe
+// test: add comment for multiple admin grant scenario
