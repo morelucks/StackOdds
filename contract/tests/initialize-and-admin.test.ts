@@ -282,3 +282,4 @@ describe('initialize and set-admin-role', () => {
 // test: add note about wallet_2 address format
 // test: clarify simnet.getAccounts() usage
 // test: add comment for describe block nesting structure
+// test: document beforeEach scope for set-admin-role tests
