@@ -306,3 +306,4 @@ describe('initialize and set-admin-role', () => {
 // test: add note about set-admin-role return value
 // test: clarify that all public fns return ok true on success
 // test: add comment for test file organization
+// test: document two describe blocks structure
