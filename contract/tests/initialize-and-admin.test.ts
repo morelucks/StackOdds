@@ -255,3 +255,4 @@ describe('initialize and set-admin-role', () => {
 // test: add comment for beforeEach initialization pattern
 // test: document test isolation via simnet reset
 // test: add note about vitest-environment-clarinet
+// test: clarify mineBlock return value structure
