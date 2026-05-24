@@ -246,3 +246,4 @@ describe('initialize and set-admin-role', () => {
 // test: clarify that deployer is initial contract-owner
 // test: add comment for collateral token parameter
 // test: document that initialize can be called multiple times
+// test: add comment explaining ERR_UNAUTHORIZED value u2001
