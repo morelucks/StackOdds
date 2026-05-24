@@ -253,3 +253,4 @@ describe('initialize and set-admin-role', () => {
 // test: add note about simnet account setup
 // test: clarify wallet_1 and wallet_2 are non-owner accounts
 // test: add comment for beforeEach initialization pattern
+// test: document test isolation via simnet reset
