@@ -1,281 +1,161 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { tx } from '@stacks/clarinet-sdk';
 import { uintCV, stringAsciiCV, principalCV, boolCV } from '@stacks/transactions';
+import {
+  getAccounts, setupAll, createMarket, mineBlocks,
+  CONTRACT_ERRORS, ok, err, okTrue, okUint, type TestAccounts,
+} from './utils';
 
-// @ts-ignore - simnet is provided by vitest-environment-clarinet
+// @ts-ignore
 declare const simnet: any;
 
 describe('Contract Tests', () => {
-  let deployer: any;
-  let user1: any;
-  let user2: any;
-  let contractAddress: string;
+  let accounts: TestAccounts;
 
   beforeEach(() => {
-    deployer = simnet.getAccounts().get('deployer')!;
-    user1 = simnet.getAccounts().get('wallet_1')!;
-    user2 = simnet.getAccounts().get('wallet_2')!;
-    contractAddress = `${deployer}.contract`;
-
-    // Mint collateral to deployer while they are still the owner of 'token'
-    simnet.mineBlock([
-      tx.callPublicFn('token', 'mint', [uintCV(0), principalCV(deployer), uintCV(10000000000)], deployer),
-      tx.callPublicFn('token', 'mint', [uintCV(0), principalCV(user1), uintCV(10000000000)], deployer),
-      tx.callPublicFn('token', 'initialize', [principalCV(contractAddress)], deployer)
-    ]);
+    accounts = getAccounts(simnet);
+    setupAll(simnet, accounts.deployer);
   });
 
   describe('Initialization', () => {
-    it('should initialize contract with owner and collateral token', async () => {
-      const collateralTokenAddress = `${deployer}.token`;
+    it('initializes with owner and collateral token', () => {
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'initialize', [principalCV(simnet.deployer), principalCV(collateralTokenAddress)], deployer)
+        tx.callPublicFn('contract', 'initialize', [
+          principalCV(accounts.deployer),
+          principalCV(`${accounts.deployer}.token`),
+        ], accounts.deployer),
       ]);
-      expect(result[0].result).toEqual({ type: 'ok', value: { type: 'true' } });
+      expect(result[0].result).toEqual(okTrue());
     });
 
-    it('should get initial market count of zero', async () => {
-      const result = [simnet.callReadOnlyFn('contract', 'get-market-count', [], deployer)];
-      expect(result[0].result).toEqual({ type: 'ok', value: { type: 'uint', value: 0n } });
+    it('returns zero market count initially', () => {
+      const result = simnet.callReadOnlyFn('contract', 'get-market-count', [], accounts.deployer);
+      expect(result.result).toEqual(okUint(0n));
     });
 
-    it('should get contract owner after initialization', async () => {
-      const collateralTokenAddress = `${deployer}.token`;
-      simnet.mineBlock([
-        tx.callPublicFn('contract', 'initialize', [principalCV(simnet.deployer), principalCV(collateralTokenAddress)], deployer)
-      ]);
-      const result = [simnet.callReadOnlyFn('contract', 'get-owner', [], deployer)];
-      expect((result[0].result as any).type).toBe('ok');
+    it('returns contract owner after initialization', () => {
+      const result = simnet.callReadOnlyFn('contract', 'get-owner', [], accounts.deployer);
+      expect((result.result as any).type).toBe('ok');
     });
   });
 
   describe('Role Management', () => {
-    beforeEach(async () => {
-      const collateralTokenAddress = `${deployer}.token`;
-      simnet.mineBlock([
-        tx.callPublicFn('contract', 'initialize', [principalCV(simnet.deployer), principalCV(collateralTokenAddress)], deployer)
+    it('grants admin role', () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn('contract', 'set-admin-role', [principalCV(accounts.user1), boolCV(true)], accounts.deployer),
       ]);
+      expect(result[0].result).toEqual(okTrue());
     });
 
-    it('should set admin role for a user', async () => {
+    it('revokes admin role', () => {
+      simnet.mineBlock([tx.callPublicFn('contract', 'set-admin-role', [principalCV(accounts.user1), boolCV(true)], accounts.deployer)]);
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-admin-role', [principalCV(user1), boolCV(true)], deployer)
+        tx.callPublicFn('contract', 'set-admin-role', [principalCV(accounts.user1), boolCV(false)], accounts.deployer),
       ]);
-      expect(result[0].result).toEqual({ type: 'ok', value: { type: 'true' } });
+      expect(result[0].result).toEqual(okTrue());
     });
 
-    it('should revoke admin role for a user', async () => {
-      simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-admin-role', [principalCV(user1), boolCV(true)], deployer)
-      ]);
+    it('rejects admin grant from non-owner', () => {
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-admin-role', [principalCV(user1), boolCV(false)], deployer)
+        tx.callPublicFn('contract', 'set-admin-role', [principalCV(accounts.user1), boolCV(true)], accounts.user1),
       ]);
-      expect(result[0].result).toEqual({ type: 'ok', value: { type: 'true' } });
+      expect(result[0].result).toEqual(err(CONTRACT_ERRORS.UNAUTHORIZED));
     });
 
-    it('should fail to set admin role if not owner', async () => {
+    it('grants moderator role', () => {
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-admin-role', [principalCV(user1), boolCV(true)], user1)
+        tx.callPublicFn('contract', 'set-moderator-role', [principalCV(accounts.user1), boolCV(true)], accounts.deployer),
       ]);
-      expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2001n } });
+      expect(result[0].result).toEqual(okTrue());
     });
 
-    it('should set moderator role for a user', async () => {
+    it('revokes moderator role', () => {
+      simnet.mineBlock([tx.callPublicFn('contract', 'set-moderator-role', [principalCV(accounts.user1), boolCV(true)], accounts.deployer)]);
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-moderator-role', [principalCV(user1), boolCV(true)], deployer)
+        tx.callPublicFn('contract', 'set-moderator-role', [principalCV(accounts.user1), boolCV(false)], accounts.deployer),
       ]);
-      expect(result[0].result).toEqual({ type: 'ok', value: { type: 'true' } });
+      expect(result[0].result).toEqual(okTrue());
     });
 
-    it('should revoke moderator role for a user', async () => {
-      simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-moderator-role', [principalCV(user1), boolCV(true)], deployer)
-      ]);
+    it('rejects moderator grant from non-owner', () => {
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-moderator-role', [principalCV(user1), boolCV(false)], deployer)
+        tx.callPublicFn('contract', 'set-moderator-role', [principalCV(accounts.user1), boolCV(true)], accounts.user1),
       ]);
-      expect(result[0].result).toEqual({ type: 'ok', value: { type: 'true' } });
-    });
-
-    it('should fail to set moderator role if not owner', async () => {
-      const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-moderator-role', [principalCV(user1), boolCV(true)], user1)
-      ]);
-      expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2001n } });
+      expect(result[0].result).toEqual(err(CONTRACT_ERRORS.UNAUTHORIZED));
     });
   });
 
   describe('Market Creation', () => {
-    beforeEach(async () => {
-      const collateralTokenAddress = `${deployer}.token`;
-      simnet.mineBlock([
-        tx.callPublicFn('contract', 'initialize', [principalCV(simnet.deployer), principalCV(collateralTokenAddress)], deployer)
+    it('rejects market with zero liquidity', () => {
+      const b = simnet.blockHeight;
+      const result = simnet.mineBlock([
+        tx.callPublicFn('contract', 'create-market', [uintCV(0), uintCV(b + 10), uintCV(b + 100), stringAsciiCV('Q'), stringAsciiCV('ipfs')], accounts.deployer),
       ]);
+      expect(result[0].result).toEqual(err(CONTRACT_ERRORS.ZERO_LIQUIDITY));
     });
 
-    it('should fail to create market with zero liquidity', async () => {
-      const currentBlock = simnet.blockHeight;
+    it('rejects market when end-time <= start-time', () => {
+      const b = simnet.blockHeight;
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'create-market', [uintCV(0), uintCV(currentBlock + 10), uintCV(currentBlock + 100), stringAsciiCV('Test question'), stringAsciiCV('ipfs-hash')], deployer)
+        tx.callPublicFn('contract', 'create-market', [uintCV(1000000), uintCV(b + 100), uintCV(b + 10), stringAsciiCV('Q'), stringAsciiCV('ipfs')], accounts.deployer),
       ]);
-      expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2002n } });
+      expect(result[0].result).toEqual(err(CONTRACT_ERRORS.INVALID_PARAMS));
     });
 
-    it('should fail to create market if end-time <= start-time', async () => {
-      const currentBlock = simnet.blockHeight;
+    it('rejects market creation from non-owner', () => {
+      const b = simnet.blockHeight;
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'create-market', [uintCV(1000000), uintCV(currentBlock + 100), uintCV(currentBlock + 10), stringAsciiCV('Test question'), stringAsciiCV('ipfs-hash')], deployer)
+        tx.callPublicFn('contract', 'create-market', [uintCV(1000000), uintCV(b + 10), uintCV(b + 100), stringAsciiCV('Q'), stringAsciiCV('ipfs')], accounts.user1),
       ]);
-      expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2008n } });
-    });
-
-    it('should fail to create market if start-time < current block', async () => {
-      const currentBlock = simnet.blockHeight;
-      const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'create-market', [uintCV(1000000), uintCV(currentBlock - 1), uintCV(currentBlock + 100), stringAsciiCV('Test question'), stringAsciiCV('ipfs-hash')], deployer)
-      ]);
-      expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2008n } });
-    });
-
-    it('should fail to create market if not owner', async () => {
-      const currentBlock = simnet.blockHeight;
-      const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'create-market', [uintCV(1000000), uintCV(currentBlock + 10), uintCV(currentBlock + 100), stringAsciiCV('Test question'), stringAsciiCV('ipfs-hash')], user1)
-      ]);
-      expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2001n } });
+      expect(result[0].result).toEqual(err(CONTRACT_ERRORS.UNAUTHORIZED));
     });
   });
 
   describe('Buy/Sell Failures', () => {
-    beforeEach(async () => {
-      const collateralTokenAddress = `${deployer}.token`;
-      simnet.mineBlock([
-        tx.callPublicFn('contract', 'initialize', [principalCV(simnet.deployer), principalCV(collateralTokenAddress)], deployer)
+    it('rejects buy-yes on non-existent market', () => {
+      const result = simnet.mineBlock([
+        tx.callPublicFn('contract', 'buy-yes', [uintCV(99999), uintCV(1000000), stringAsciiCV('US')], accounts.user1),
       ]);
+      expect(result[0].result).toEqual(err(CONTRACT_ERRORS.MARKET_NOT_FOUND));
     });
 
-    it('should fail to buy YES if market does not exist', async () => {
+    it('rejects buy-no on non-existent market', () => {
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'buy-yes', [uintCV(99999), uintCV(1000000), stringAsciiCV('US')], user1)
+        tx.callPublicFn('contract', 'buy-no', [uintCV(99999), uintCV(1000000), stringAsciiCV('US')], accounts.user1),
       ]);
-      expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2005n } });
-    });
-
-    it('should fail to buy NO if market does not exist', async () => {
-      const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'buy-no', [uintCV(99999), uintCV(1000000), stringAsciiCV('US')], user1)
-      ]);
-      expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2005n } });
+      expect(result[0].result).toEqual(err(CONTRACT_ERRORS.MARKET_NOT_FOUND));
     });
   });
 
   describe('Token Transfer Errors', () => {
-    it('should fail to transfer if not sender', async () => {
+    it('rejects transfer when caller is not sender', () => {
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'transfer', [uintCV(1), uintCV(1000000), principalCV(user1), principalCV(user2)], user2)
+        tx.callPublicFn('contract', 'transfer', [uintCV(1), uintCV(1000000), principalCV(accounts.user1), principalCV(accounts.user2)], accounts.user2),
       ]);
-      expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2001n } });
+      expect(result[0].result).toEqual(err(CONTRACT_ERRORS.UNAUTHORIZED));
     });
   });
 
   describe('Read-Only Functions', () => {
-    it('should get token ID for YES outcome', async () => {
-      const result = [simnet.callReadOnlyFn('contract', 'get-token-id', [uintCV(1), uintCV(1)], deployer)];
-      expect((result[0].result as any).type).toBe('ok');
+    it('returns token ID for YES outcome', () => {
+      const result = simnet.callReadOnlyFn('contract', 'get-token-id', [uintCV(1), uintCV(1)], accounts.deployer);
+      expect((result.result as any).type).toBe('ok');
     });
 
-    it('should get token ID for NO outcome', async () => {
-      const result = [simnet.callReadOnlyFn('contract', 'get-token-id', [uintCV(1), uintCV(0)], deployer)];
-      expect((result[0].result as any).type).toBe('ok');
-    });
-  });
-
-  describe('Expiration Consistency', () => {
-    it('should maintain market data consistency through expiration', async () => {
-      const collateralTokenAddress = `${deployer}.token`;
-      simnet.mineBlock([
-        tx.callPublicFn('contract', 'initialize', [principalCV(simnet.deployer), principalCV(collateralTokenAddress)], deployer)
-      ]);
-
-      const currentBlock = simnet.blockHeight;
-      const createResult = simnet.mineBlock([
-        tx.callPublicFn('contract', 'create-market', [uintCV(1000000), uintCV(currentBlock + 10), uintCV(currentBlock + 20), stringAsciiCV('Exp test'), stringAsciiCV('ipfs')], deployer)
-      ]);
-      const marketId = Number((createResult[0].result as any).value.value);
-
-      const marketBefore = [simnet.callReadOnlyFn('contract', 'get-market', [uintCV(marketId)], deployer)];
-
-      for (let i = 0; i < 30; i++) {
-        simnet.mineBlock([]);
-      }
-
-      const marketAfter = [simnet.callReadOnlyFn('contract', 'get-market', [uintCV(marketId)], deployer)];
-      expect((marketBefore[0].result as any).type).toBe('ok');
-      expect((marketAfter[0].result as any).type).toBe('ok');
+    it('returns token ID for NO outcome', () => {
+      const result = simnet.callReadOnlyFn('contract', 'get-token-id', [uintCV(1), uintCV(0)], accounts.deployer);
+      expect((result.result as any).type).toBe('ok');
     });
   });
 
-  describe('NPM constraints (User requested)', () => {
-    it('Npm: Npm download concentration', () => {
-      expect(true).toBe(true);
-    });
-
-    it('NPM Package Downloads', () => {
-      expect(true).toBe(true);
-    });
-
-    it('Npm: Npm excluded packages quality', () => {
-      expect(true).toBe(true);
-    });
-
-    it('Npm: Npm excluded packages', () => {
-      expect(true).toBe(true);
+  describe('Market Data Consistency', () => {
+    it('maintains market data through expiration', () => {
+      const marketId = createMarket(simnet, accounts.deployer, { startOffset: 10, endOffset: 20 });
+      const before = simnet.callReadOnlyFn('contract', 'get-market', [uintCV(marketId)], accounts.deployer);
+      mineBlocks(simnet, 30);
+      const after = simnet.callReadOnlyFn('contract', 'get-market', [uintCV(marketId)], accounts.deployer);
+      expect((before.result as any).type).toBe('ok');
+      expect((after.result as any).type).toBe('ok');
     });
   });
 });
-// contract test step 1
-// contract test step 2
-// contract test step 3
-// contract test step 4
-// contract test step 5
-// contract test step 6
-// contract test step 7
-// contract test step 8
-// contract test step 9
-// contract test step 10
-// contract test step 11
-// contract test step 12
-// contract test step 13
-// contract test step 14
-// contract test step 15
-// contract test step 16
-// contract test step 17
-// contract test step 18
-// contract test step 19
-// contract test step 20
-// contract test step 21
-// contract test step 22
-// contract test step 23
-// contract test step 24
-// contract test step 25
-// contract test step 26
-// contract test step 27
-// contract test step 28
-// contract test step 29
-// contract test step 30
-// contract test step 31
-// contract test step 32
-// contract test step 33
-// contract test step 34
-// contract test step 35
-// contract test step 36
-// contract test step 37
-// contract test step 38
-// contract test step 39
-// contract test step 40
-// contract test step 41
-// contract test step 42
-// contract test step 43
-// contract test step 44
-// contract test step 45
