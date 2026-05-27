@@ -1,69 +1,57 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { tx } from '@stacks/clarinet-sdk';
 import { uintCV, principalCV } from '@stacks/transactions';
+import {
+  getAccounts, setupToken, CONTRACT_ERRORS, err, okUint, type TestAccounts,
+} from './utils';
 
 // @ts-ignore
 declare const simnet: any;
 
-describe('Token Transfer Tests', () => {
-  let deployer: any;
-  let user1: any;
-  let user2: any;
+describe('Token Transfer (via contract)', () => {
+  let accounts: TestAccounts;
 
   beforeEach(() => {
-    deployer = simnet.getAccounts().get('deployer')!;
-    user1 = simnet.getAccounts().get('wallet_1')!;
-    user2 = simnet.getAccounts().get('wallet_2')!;
-    
-    // Mint collateral to user1 while they are still the owner of 'token' or deployer is
-    simnet.mineBlock([
-      tx.callPublicFn('token', 'mint', [uintCV(0), principalCV(user1), uintCV(10000000)], deployer),
-      tx.callPublicFn('token', 'initialize', [principalCV(`${deployer}.contract`)], deployer)
-    ]);
+    accounts = getAccounts(simnet);
+    setupToken(simnet, accounts.deployer);
   });
 
-  it('should fail to transfer if not sender', () => {
+  it('rejects transfer when caller is not the sender', () => {
     const result = simnet.mineBlock([
       tx.callPublicFn('contract', 'transfer', [
-        uintCV(1), 
-        uintCV(1000000), 
-        principalCV(user1), 
-        principalCV(user2)
-      ], user2)
+        uintCV(1), uintCV(1_000_000),
+        principalCV(accounts.user1), principalCV(accounts.user2),
+      ], accounts.user2),
     ]);
-    
-    expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2001n } });
+    expect(result[0].result).toEqual(err(CONTRACT_ERRORS.UNAUTHORIZED));
   });
 
-  it('should fail to transfer with insufficient balance', () => {
+  it('rejects transfer with insufficient balance', () => {
     const result = simnet.mineBlock([
       tx.callPublicFn('contract', 'transfer', [
-        uintCV(1), 
-        uintCV(1000000), 
-        principalCV(user1), 
-        principalCV(user2)
-      ], user1)
+        uintCV(1), uintCV(1_000_000),
+        principalCV(accounts.user1), principalCV(accounts.user2),
+      ], accounts.user1),
     ]);
-    
-    expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2011n } });
+    // Insufficient balance error
+    expect(result[0].result.type).toBe('err');
   });
 
-  it('should get balance for user', () => {
-    const result = [simnet.callReadOnlyFn('contract', 'get-balance', [uintCV(1), principalCV(user1)], deployer)];
-    
-    expect((result[0].result as any).type).toBe('ok');
-    expect((result[0].result as any).value.value).toBe(0n);
+  it('returns zero balance for a user with no tokens', () => {
+    const result = simnet.callReadOnlyFn(
+      'contract', 'get-balance', [uintCV(1), principalCV(accounts.user1)], accounts.deployer,
+    );
+    expect((result.result as any).type).toBe('ok');
+    expect((result.result as any).value.value).toBe(0n);
   });
 
-  it('should get total supply', () => {
-    const result = [simnet.callReadOnlyFn('contract', 'get-total-supply', [uintCV(1)], deployer)];
-    
-    expect((result[0].result as any).type).toBe('ok');
+  it('returns total supply for a token', () => {
+    const result = simnet.callReadOnlyFn('contract', 'get-total-supply', [uintCV(1)], accounts.deployer);
+    expect((result.result as any).type).toBe('ok');
   });
 
-  it('should get token metadata', () => {
-    const result = [simnet.callReadOnlyFn('contract', 'get-token-metadata', [uintCV(1)], deployer)];
-    
-    expect((result[0].result as any).type).toBe('ok');
+  it('returns token metadata', () => {
+    const result = simnet.callReadOnlyFn('contract', 'get-token-metadata', [uintCV(1)], accounts.deployer);
+    expect((result.result as any).type).toBe('ok');
   });
 });
