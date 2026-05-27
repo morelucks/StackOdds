@@ -1,70 +1,47 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { tx } from '@stacks/clarinet-sdk';
-import { uintCV, stringAsciiCV, principalCV } from '@stacks/transactions';
+import { uintCV, stringAsciiCV } from '@stacks/transactions';
+import {
+  getAccounts, setupAll, createMarket, CONTRACT_ERRORS, err, type TestAccounts,
+} from './utils';
 
 // @ts-ignore
 declare const simnet: any;
 
-describe('Market Trading Tests', () => {
-  let deployer: any;
-  let user1: any;
+describe('Market Trading', () => {
+  let accounts: TestAccounts;
   let marketId: number;
 
   beforeEach(() => {
-    deployer = simnet.getAccounts().get('deployer')!;
-    user1 = simnet.getAccounts().get('wallet_1')!;
-    
-    simnet.mineBlock([
-      tx.callPublicFn('token', 'initialize', [principalCV(`${deployer}.contract`)], deployer)
-    ]);
-    
-    const collateralTokenAddress = `${deployer}.token`;
-    simnet.mineBlock([
-      tx.callPublicFn('contract', 'initialize', [principalCV(simnet.deployer), principalCV(collateralTokenAddress)], deployer)
-    ]);
-
-    const currentBlock = simnet.blockHeight;
-    const createResult = simnet.mineBlock([
-      tx.callPublicFn('contract', 'create-market', [
-        uintCV(1000000), 
-        uintCV(currentBlock + 10), 
-        uintCV(currentBlock + 100), 
-        stringAsciiCV('Test Market'), 
-        stringAsciiCV('ipfs-hash')
-      ], deployer)
-    ]);
-    
-    marketId = Number((createResult[0].result as any).value.value);
+    accounts = getAccounts(simnet);
+    setupAll(simnet, accounts.deployer);
+    marketId = createMarket(simnet, accounts.deployer);
   });
 
-  it('should fail to buy YES on non-existent market', () => {
+  it('rejects buy-yes on non-existent market', () => {
     const result = simnet.mineBlock([
-      tx.callPublicFn('contract', 'buy-yes', [uintCV(99999), uintCV(1000000), stringAsciiCV('US')], user1)
+      tx.callPublicFn('contract', 'buy-yes', [uintCV(99999), uintCV(1_000_000), stringAsciiCV('US')], accounts.user1),
     ]);
-    
-    expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2005n } });
+    expect(result[0].result).toEqual(err(CONTRACT_ERRORS.MARKET_NOT_FOUND));
   });
 
-  it('should fail to buy NO on non-existent market', () => {
+  it('rejects buy-no on non-existent market', () => {
     const result = simnet.mineBlock([
-      tx.callPublicFn('contract', 'buy-no', [uintCV(99999), uintCV(1000000), stringAsciiCV('US')], user1)
+      tx.callPublicFn('contract', 'buy-no', [uintCV(99999), uintCV(1_000_000), stringAsciiCV('US')], accounts.user1),
     ]);
-    
-    expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2005n } });
+    expect(result[0].result).toEqual(err(CONTRACT_ERRORS.MARKET_NOT_FOUND));
   });
 
-  it('should fail to buy with zero amount', () => {
+  it('rejects buy-yes with zero amount', () => {
     const result = simnet.mineBlock([
-      tx.callPublicFn('contract', 'buy-yes', [uintCV(marketId), uintCV(0), stringAsciiCV('US')], user1)
+      tx.callPublicFn('contract', 'buy-yes', [uintCV(marketId), uintCV(0), stringAsciiCV('US')], accounts.user1),
     ]);
-    
-    expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2008n } });
+    expect(result[0].result).toEqual(err(CONTRACT_ERRORS.INVALID_PARAMS));
   });
 
-  it('should get market data', () => {
-    const result = [simnet.callReadOnlyFn('contract', 'get-market', [uintCV(marketId)], deployer)];
-    
-    expect((result[0].result as any).type).toBe('ok');
-    expect((result[0].result as any).value.value).toBeDefined();
+  it('returns market data for a valid market', () => {
+    const result = simnet.callReadOnlyFn('contract', 'get-market', [uintCV(marketId)], accounts.deployer);
+    expect((result.result as any).type).toBe('ok');
+    expect((result.result as any).value.value).toBeDefined();
   });
 });
