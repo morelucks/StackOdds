@@ -1,105 +1,80 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { tx } from '@stacks/clarinet-sdk';
-import { uintCV, principalCV, boolCV } from '@stacks/transactions';
+import { principalCV, boolCV } from '@stacks/transactions';
+import {
+  getAccounts, setupAll, CONTRACT_ERRORS, err, okTrue, type TestAccounts,
+} from './utils';
 
 // @ts-ignore
 declare const simnet: any;
 
-describe('Access Control Tests', () => {
-  let deployer: any;
-  let user1: any;
-  let user2: any;
+describe('Access Control', () => {
+  let accounts: TestAccounts;
 
   beforeEach(() => {
-    deployer = simnet.getAccounts().get('deployer')!;
-    user1 = simnet.getAccounts().get('wallet_1')!;
-    user2 = simnet.getAccounts().get('wallet_2')!;
-    
-    const collateralTokenAddress = `${deployer}.token`;
-    simnet.mineBlock([
-      tx.callPublicFn('contract', 'initialize', [principalCV(simnet.deployer), principalCV(collateralTokenAddress)], deployer)
-    ]);
+    accounts = getAccounts(simnet);
+    setupAll(simnet, accounts.deployer);
   });
 
   describe('Admin Role', () => {
-    it('should grant admin role', () => {
+    it('grants admin role', () => {
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-admin-role', [principalCV(user1), boolCV(true)], deployer)
+        tx.callPublicFn('contract', 'set-admin-role', [principalCV(accounts.user1), boolCV(true)], accounts.deployer),
       ]);
-      
-      expect(result[0].result).toEqual({ type: 'ok', value: { type: 'true' } });
+      expect(result[0].result).toEqual(okTrue());
     });
 
-    it('should revoke admin role', () => {
-      simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-admin-role', [principalCV(user1), boolCV(true)], deployer)
-      ]);
-      
+    it('revokes admin role', () => {
+      simnet.mineBlock([tx.callPublicFn('contract', 'set-admin-role', [principalCV(accounts.user1), boolCV(true)], accounts.deployer)]);
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-admin-role', [principalCV(user1), boolCV(false)], deployer)
+        tx.callPublicFn('contract', 'set-admin-role', [principalCV(accounts.user1), boolCV(false)], accounts.deployer),
       ]);
-      
-      expect(result[0].result).toEqual({ type: 'ok', value: { type: 'true' } });
+      expect(result[0].result).toEqual(okTrue());
     });
 
-    it('should fail to set admin role if not owner', () => {
+    it('rejects admin grant from non-owner', () => {
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-admin-role', [principalCV(user2), boolCV(true)], user1)
+        tx.callPublicFn('contract', 'set-admin-role', [principalCV(accounts.user2), boolCV(true)], accounts.user1),
       ]);
-      
-      expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2001n } });
+      expect(result[0].result).toEqual(err(CONTRACT_ERRORS.UNAUTHORIZED));
     });
   });
 
   describe('Moderator Role', () => {
-    it('should grant moderator role', () => {
+    it('grants moderator role', () => {
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-moderator-role', [principalCV(user1), boolCV(true)], deployer)
+        tx.callPublicFn('contract', 'set-moderator-role', [principalCV(accounts.user1), boolCV(true)], accounts.deployer),
       ]);
-      
-      expect(result[0].result).toEqual({ type: 'ok', value: { type: 'true' } });
+      expect(result[0].result).toEqual(okTrue());
     });
 
-    it('should revoke moderator role', () => {
-      simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-moderator-role', [principalCV(user1), boolCV(true)], deployer)
-      ]);
-      
+    it('revokes moderator role', () => {
+      simnet.mineBlock([tx.callPublicFn('contract', 'set-moderator-role', [principalCV(accounts.user1), boolCV(true)], accounts.deployer)]);
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-moderator-role', [principalCV(user1), boolCV(false)], deployer)
+        tx.callPublicFn('contract', 'set-moderator-role', [principalCV(accounts.user1), boolCV(false)], accounts.deployer),
       ]);
-      
-      expect(result[0].result).toEqual({ type: 'ok', value: { type: 'true' } });
+      expect(result[0].result).toEqual(okTrue());
     });
 
-    it('should fail to set moderator role if not owner', () => {
+    it('rejects moderator grant from non-owner', () => {
       const result = simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-moderator-role', [principalCV(user2), boolCV(true)], user1)
+        tx.callPublicFn('contract', 'set-moderator-role', [principalCV(accounts.user2), boolCV(true)], accounts.user1),
       ]);
-      
-      expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2001n } });
+      expect(result[0].result).toEqual(err(CONTRACT_ERRORS.UNAUTHORIZED));
     });
   });
 
   describe('Authorization Check', () => {
-    it('should check authorization for admin', () => {
-      simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-admin-role', [principalCV(user1), boolCV(true)], deployer)
-      ]);
-      
-      const result = [simnet.callReadOnlyFn('contract', 'is-authorized', [principalCV(user1)], deployer)];
-      
-      expect((result[0].result as any).type).toBe('ok');
+    it('confirms admin is authorized', () => {
+      simnet.mineBlock([tx.callPublicFn('contract', 'set-admin-role', [principalCV(accounts.user1), boolCV(true)], accounts.deployer)]);
+      const result = simnet.callReadOnlyFn('contract', 'is-authorized', [principalCV(accounts.user1)], accounts.deployer);
+      expect((result.result as any).type).toBe('ok');
     });
 
-    it('should check authorization for moderator', () => {
-      simnet.mineBlock([
-        tx.callPublicFn('contract', 'set-moderator-role', [principalCV(user1), boolCV(true)], deployer)
-      ]);
-      
-      const result = [simnet.callReadOnlyFn('contract', 'is-authorized', [principalCV(user1)], deployer)];
-      
-      expect((result[0].result as any).type).toBe('ok');
+    it('confirms moderator is authorized', () => {
+      simnet.mineBlock([tx.callPublicFn('contract', 'set-moderator-role', [principalCV(accounts.user1), boolCV(true)], accounts.deployer)]);
+      const result = simnet.callReadOnlyFn('contract', 'is-authorized', [principalCV(accounts.user1)], accounts.deployer);
+      expect((result.result as any).type).toBe('ok');
     });
   });
 });
