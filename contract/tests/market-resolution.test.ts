@@ -1,88 +1,53 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { tx } from '@stacks/clarinet-sdk';
-import { uintCV, stringAsciiCV, principalCV, boolCV } from '@stacks/transactions';
+import { uintCV, boolCV } from '@stacks/transactions';
+import {
+  getAccounts, setupAll, createMarket, mineBlocks,
+  CONTRACT_ERRORS, err, okTrue, type TestAccounts,
+} from './utils';
 
 // @ts-ignore
 declare const simnet: any;
 
-describe('Market Resolution Tests', () => {
-  let deployer: any;
-  let user1: any;
+describe('Market Resolution', () => {
+  let accounts: TestAccounts;
   let marketId: number;
 
   beforeEach(() => {
-    deployer = simnet.getAccounts().get('deployer')!;
-    user1 = simnet.getAccounts().get('wallet_1')!;
-    
-    simnet.mineBlock([
-      tx.callPublicFn('token', 'initialize', [principalCV(`${deployer}.contract`)], deployer)
-    ]);
-    
-    const collateralTokenAddress = `${deployer}.token`;
-    simnet.mineBlock([
-      tx.callPublicFn('contract', 'initialize', [principalCV(simnet.deployer), principalCV(collateralTokenAddress)], deployer)
-    ]);
-
-    const currentBlock = simnet.blockHeight;
-    const createResult = simnet.mineBlock([
-      tx.callPublicFn('contract', 'create-market', [
-        uintCV(1000000), 
-        uintCV(currentBlock + 10), 
-        uintCV(currentBlock + 20), 
-        stringAsciiCV('Test Market'), 
-        stringAsciiCV('ipfs-hash')
-      ], deployer)
-    ]);
-    
-    marketId = Number((createResult[0].result as any).value.value);
+    accounts = getAccounts(simnet);
+    setupAll(simnet, accounts.deployer);
+    marketId = createMarket(simnet, accounts.deployer, { startOffset: 10, endOffset: 20 });
   });
 
-  it('should fail to resolve before end time', () => {
+  it('rejects resolution before end time', () => {
     const result = simnet.mineBlock([
-      tx.callPublicFn('contract', 'resolve-market', [uintCV(marketId), boolCV(true)], deployer)
+      tx.callPublicFn('contract', 'resolve-market', [uintCV(marketId), boolCV(true)], accounts.deployer),
     ]);
-    
-    expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2010n } });
+    expect(result[0].result).toEqual(err(CONTRACT_ERRORS.NOT_EXPIRED));
   });
 
-  it('should resolve market after end time', () => {
-    // Mine blocks to pass end time
-    for (let i = 0; i < 25; i++) {
-      simnet.mineBlock([]);
-    }
-    
+  it('resolves market after end time', () => {
+    mineBlocks(simnet, 25);
     const result = simnet.mineBlock([
-      tx.callPublicFn('contract', 'resolve-market', [uintCV(marketId), boolCV(true)], deployer)
+      tx.callPublicFn('contract', 'resolve-market', [uintCV(marketId), boolCV(true)], accounts.deployer),
     ]);
-    
-    expect(result[0].result).toEqual({ type: 'ok', value: { type: 'true' } });
+    expect(result[0].result).toEqual(okTrue());
   });
 
-  it('should fail to resolve twice', () => {
-    for (let i = 0; i < 25; i++) {
-      simnet.mineBlock([]);
-    }
-    
-    simnet.mineBlock([
-      tx.callPublicFn('contract', 'resolve-market', [uintCV(marketId), boolCV(true)], deployer)
-    ]);
-    
+  it('rejects double resolution', () => {
+    mineBlocks(simnet, 25);
+    simnet.mineBlock([tx.callPublicFn('contract', 'resolve-market', [uintCV(marketId), boolCV(true)], accounts.deployer)]);
     const result = simnet.mineBlock([
-      tx.callPublicFn('contract', 'resolve-market', [uintCV(marketId), boolCV(false)], deployer)
+      tx.callPublicFn('contract', 'resolve-market', [uintCV(marketId), boolCV(false)], accounts.deployer),
     ]);
-    
-    expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2003n } });
+    expect(result[0].result).toEqual(err(CONTRACT_ERRORS.ALREADY_RESOLVED));
   });
 
-  it('should fail to resolve if not owner', () => {
-    for (let i = 0; i < 25; i++) {
-      simnet.mineBlock([]);
-    }
-    
+  it('rejects resolution from non-owner', () => {
+    mineBlocks(simnet, 25);
     const result = simnet.mineBlock([
-      tx.callPublicFn('contract', 'resolve-market', [uintCV(marketId), boolCV(true)], user1)
+      tx.callPublicFn('contract', 'resolve-market', [uintCV(marketId), boolCV(true)], accounts.user1),
     ]);
-    
-    expect(result[0].result).toEqual({ type: 'err', value: { type: 'uint', value: 2001n } });
+    expect(result[0].result).toEqual(err(CONTRACT_ERRORS.UNAUTHORIZED));
   });
 });
